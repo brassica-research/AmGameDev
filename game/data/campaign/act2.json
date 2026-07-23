@@ -1,0 +1,417 @@
+{
+  "act": 2,
+  "title": "Act II — The War (1775–1781)",
+  "missions": [
+    {
+      "id": "a2_noble_train",
+      "title": "The Noble Train",
+      "date": "1776-01-05",
+      "location": "Fort Ticonderoga to Cambridge, 300 miles",
+      "type": "vignette_logistics",
+      "weather": "deep winter — the mission depends on it",
+      "summary": "Escort Henry Knox's sixty tons of captured artillery by ox-sledge over frozen rivers and the Berkshires. Logistics as gameplay: test the ice, rig drag ropes, recover the gun that goes through the Mohawk (they really got it back).",
+      "objectives": [
+        {"kind": "primary", "text": "Deliver all 59 guns to Cambridge"},
+        {"kind": "secondary", "text": "Lose no oxen, no men, and no time crossing the Hudson at Half Moon"}
+      ],
+      "sources": ["mcculloough_1776", "atkinson_british_are_coming"]
+    },
+    {
+      "id": "a2_dorchester",
+      "title": "One Night's Work",
+      "date": "1776-03-04",
+      "location": "Dorchester Heights, Boston",
+      "type": "vignette_stealth",
+      "weather": "unseasonably mild night; hay bales muffle the wheels",
+      "summary": "Fortify the Heights in one night using prefabricated chandeliers and fascines — the real engineering trick — while cannon fire elsewhere masks the noise. Dawn: Howe sees works 'raised with an expedition equal to that of the Genii of Aladdin's wonderful lamp.' March 17: the British sail away. Position beats slaughter.",
+      "objectives": [
+        {"kind": "primary", "text": "Emplace the works and Knox's guns before first light"},
+        {"kind": "constraint", "text": "Noise discipline: wagon and tool noise above threshold alerts the garrison"}
+      ],
+      "sources": ["mcculloough_1776", "thacher_military_journal"]
+    },
+    {
+      "id": "a2_long_island",
+      "title": "The Old Line",
+      "date": "1776-08-27",
+      "location": "Gowanus Road and the Old Stone House, Brooklyn",
+      "type": "battle_delay",
+      "summary": "The flank is turned through the unguarded Jamaica Pass before dawn. Fight the delaying action beside the Maryland 400's repeated charges at the Old Stone House. You cannot win; you can buy minutes for thousands.",
+      "objectives": [
+        {"kind": "primary", "text": "Hold the Gowanus Road line for the retreating regiments — survive N minutes"},
+        {"kind": "secondary", "text": "Support each Maryland charge with covering volleys"}
+      ],
+      "sources": ["mcculloough_1776", "fischer_washingtons_crossing"]
+    },
+    {
+      "id": "a2_brooklyn_evacuation",
+      "title": "The Water Is Smooth",
+      "date": "1776-08-29",
+      "location": "Brooklyn ferry landing, East River",
+      "type": "extraction",
+      "weather": "night rain, then providential fog at dawn",
+      "summary": "The night evacuation of 9,000 men across the East River in silence, Glover's Marblehead mariners at the oars, fog covering the last boats. Man the shrinking rearguard line; every soldier of yours who boards is saved. The purest extraction mission in the game.",
+      "objectives": [
+        {"kind": "primary", "text": "Hold the rearguard perimeter as it contracts by phases"},
+        {"kind": "primary", "text": "Embark your brigade — casualties here are men left behind"},
+        {"kind": "constraint", "text": "Silence: musket fire draws the fleet's attention and shortens the clock"}
+      ],
+      "sources": ["mcculloough_1776", "fischer_washingtons_crossing"]
+    },
+    {
+      "id": "a2_harlem",
+      "title": "Rally at Harlem",
+      "date": "1776-09-16",
+      "location": "Kip's Bay, then the Hollow Way, Harlem Heights",
+      "type": "battle",
+      "summary": "Day one: the Kip's Bay rout — survive it (Washington's documented fury plays out around you). Day two: the counterpunch at Harlem Heights, Knowlton's Rangers flanking through the Hollow Way. Knowlton falls. The first taste of winning in the open field.",
+      "objectives": [
+        {"kind": "primary", "text": "Kip's Bay: get your company off the beach road intact"},
+        {"kind": "primary", "text": "Harlem: press the buckwheat field attack when the flanking signal comes"}
+      ],
+      "sources": ["mcculloough_1776", "fischer_washingtons_crossing"]
+    },
+    {
+      "id": "a2_long_retreat",
+      "title": "The Long Retreat",
+      "date": "1776-11-20",
+      "location": "Fort Lee to the Delaware, through the Jerseys",
+      "type": "vignette_attrition_march",
+      "weather": "cold rain, first snows, roads of mud",
+      "summary": "The army dissolves around you: enlistments expiring, shoes gone, Congress fled to Baltimore, Fort Washington's 2,800 men lost in an afternoon (the news arrives mid-march). March management: keep the core of your company together by any means the period allows. Ends with The American Crisis read by firelight.",
+      "objectives": [
+        {"kind": "primary", "text": "Reach the Delaware crossings with your company's cadre intact"},
+        {"kind": "hub", "text": "Persuade your expiring six-week men to stay for one more stroke"}
+      ],
+      "cutscene": "the_crisis",
+      "sources": ["paine_american_crisis", "fischer_washingtons_crossing", "martin_narrative"]
+    },
+    {
+      "id": "a2_trenton",
+      "title": "Victory or Death",
+      "date": "1776-12-26",
+      "location": "McConkey's Ferry to Trenton, New Jersey",
+      "type": "battle",
+      "weather": "nor'easter: snow, sleet, and ice on the river",
+      "summary": "The crossing in Durham boats through running ice (Glover's men again), the nine-mile night march in a storm, the two-column dawn assault. Knox's guns sweep King and Queen Streets; Rall falls; nearly nine hundred Hessians taken. The password was literally 'Victory or Death.'",
+      "objectives": [
+        {"kind": "primary", "text": "Cross with guns and horses before the storm closes the river"},
+        {"kind": "primary", "text": "March: keep the column closed and the priming dry — men froze on this road"},
+        {"kind": "primary", "text": "Assault: seize the King/Queen Street junction before the garrison forms"}
+      ],
+      "sources": ["fischer_washingtons_crossing", "washington_general_orders", "ewald_diary"]
+    },
+    {
+      "id": "a2_assunpink",
+      "title": "The Bridge at Assunpink",
+      "date": "1777-01-02",
+      "location": "Assunpink Creek, Trenton",
+      "type": "battle_hold",
+      "summary": "Hold the stone bridge at dusk against three assaults by Cornwallis's van — then slip away at midnight, campfires burning and wheels muffled in rags, to appear at Princeton by morning.",
+      "objectives": [
+        {"kind": "primary", "text": "The bridge does not fall — three assaults, three repulses"},
+        {"kind": "primary", "text": "Withdraw by ranks after dark leaving the fires burning"}
+      ],
+      "sources": ["fischer_washingtons_crossing"]
+    },
+    {
+      "id": "a2_princeton",
+      "title": "Princeton",
+      "date": "1777-01-03",
+      "location": "Clarke's orchard and Princeton, New Jersey",
+      "type": "battle",
+      "weather": "hard frost, brilliant clear morning",
+      "summary": "Mercer's brigade breaks in the orchard; Washington rides between the lines — within thirty yards of the British muskets — to rally it, and you fight inside that setpiece. Mercer dies of his bayonet wounds: the muster roll's first general officer.",
+      "objectives": [
+        {"kind": "primary", "text": "Rally on the Commander-in-Chief and retake the orchard fence line"},
+        {"kind": "secondary", "text": "Cut the Post Road before the 40th Foot escapes to the college"}
+      ],
+      "sources": ["fischer_washingtons_crossing"]
+    },
+    {
+      "id": "a2_hub_morristown",
+      "title": "Morristown",
+      "date": "1777-02-01",
+      "location": "Morristown, New Jersey",
+      "type": "hub",
+      "summary": "Winter quarters. The smallpox decision: Washington has ordered mass inoculation — a genuine gamble with real period risk — and you choose for your own brigade. Recruit the 'new army' of three-year men; the six-week militia army is gone.",
+      "objectives": [
+        {"kind": "hub", "text": "Inoculation: choose, and live with the fever weeks"},
+        {"kind": "hub", "text": "Rebuild to strength with three-year enlistments"}
+      ],
+      "sources": ["washington_general_orders", "fischer_washingtons_crossing"]
+    },
+    {
+      "id": "a2_brandywine",
+      "title": "Brandywine",
+      "date": "1777-09-11",
+      "location": "Birmingham Meeting House, Pennsylvania",
+      "type": "battle",
+      "branch": "path_a_philadelphia",
+      "summary": "PATH A (with Washington). Howe's long flank march crosses the unguarded upper fords; the army wheels to face it at Birmingham Hill. Hold through successive positions; Lafayette takes a ball through the calf rallying the line beside you. Defeat with honor — Philadelphia falls, the army survives.",
+      "objectives": [
+        {"kind": "primary", "text": "Hold Birmingham Hill through three positions without your wing dissolving"},
+        {"kind": "secondary", "text": "Bring Lafayette off the field once he is hit"}
+      ],
+      "sources": ["atkinson_fate_of_the_day", "ewald_diary"]
+    },
+    {
+      "id": "a2_germantown",
+      "title": "Fog at Germantown",
+      "date": "1777-10-04",
+      "location": "Germantown, Pennsylvania",
+      "type": "battle",
+      "branch": "path_a_philadelphia",
+      "summary": "PATH A. The four-column dawn counterattack that nearly worked. Fog and powder smoke cut visibility to yards; friendly fire is a real mechanic; and the Chew House decision — bypass the stone strongpoint or stop to reduce it — mirrors the council argument that may have cost the battle.",
+      "objectives": [
+        {"kind": "primary", "text": "Take the market square before the fog lifts"},
+        {"kind": "choice", "text": "Chew House: mask it and push on, or batter it and lose the momentum"}
+      ],
+      "sources": ["atkinson_fate_of_the_day", "della_gatta_paintings"]
+    },
+    {
+      "id": "a2_fort_mifflin",
+      "title": "Fort Mifflin",
+      "date": "1777-11-10",
+      "location": "Mud Island, Delaware River",
+      "type": "siege_defense",
+      "branch": "path_a_philadelphia",
+      "optional": true,
+      "summary": "PATH A, optional. Endure the heaviest bombardment of the war in a flooded, shot-through fort to starve Howe of his river supply line. Joseph Plumb Martin served here; his memoir narrates the mission.",
+      "objectives": [
+        {"kind": "primary", "text": "Keep one battery answering for five days"},
+        {"kind": "primary", "text": "Evacuate the garrison by night when the walls are gone"}
+      ],
+      "sources": ["martin_narrative"]
+    },
+    {
+      "id": "a2_freemans_farm",
+      "title": "Freeman's Farm",
+      "date": "1777-09-19",
+      "location": "Saratoga, New York",
+      "type": "battle",
+      "branch": "path_b_saratoga",
+      "summary": "PATH B (detached north — as Glover's brigade truly was). The murderous push-and-pull across the clearing beside Morgan's riflemen, his turkey-call signals cutting through the din. Burgoyne holds the field and cannot afford to.",
+      "objectives": [
+        {"kind": "primary", "text": "Contest the clearing — no line may hold it, so bleed every British push"},
+        {"kind": "secondary", "text": "Screen Morgan's riflemen while they reform after the first rush"}
+      ],
+      "sources": ["atkinson_fate_of_the_day", "middlekauff_glorious_cause"]
+    },
+    {
+      "id": "a2_bemis_heights",
+      "title": "Bemis Heights",
+      "date": "1777-10-07",
+      "location": "Saratoga, New York",
+      "type": "battle",
+      "branch": "path_b_saratoga",
+      "summary": "PATH B. Break Burgoyne. Arnold — stripped of command — storms onto the field anyway and carries Breymann's Redoubt, his leg shattered in the ditch. You fight in his wake. Ten days later Burgoyne surrenders an entire army, and France decides.",
+      "objectives": [
+        {"kind": "primary", "text": "Take the Balcarres line's flank when Arnold draws its fire"},
+        {"kind": "primary", "text": "Carry Breymann's Redoubt before nightfall"}
+      ],
+      "cutscene": "saratoga_surrender",
+      "sources": ["atkinson_fate_of_the_day", "middlekauff_glorious_cause"]
+    },
+    {
+      "id": "a2_oriskany",
+      "title": "Oriskany's Shadow",
+      "date": "1777-08-06",
+      "location": "Oriskany ravine, Mohawk Valley, New York",
+      "type": "vignette",
+      "branch": "path_b_saratoga",
+      "optional": true,
+      "summary": "PATH B, optional flashback with the relief column after the ambush. The Revolution as civil war: Oneida warriors beside the Tryon County militia; Mohawk, Seneca and Cayuga fighters with the Crown — the Haudenosaunee Confederacy broken against itself. Somber by design; no victory music exists for this mission.",
+      "objectives": [
+        {"kind": "primary", "text": "Bring the wounded out of the ravine"},
+        {"kind": "codex", "text": "Field Journal: the Confederacy's council fire covered — what this day cost the Six Nations"}
+      ],
+      "sources": ["calloway_indian_country", "taylor_american_revolutions"]
+    },
+    {
+      "id": "a2_hub_valley_forge",
+      "title": "Valley Forge",
+      "date": "1777-12-19",
+      "location": "Valley Forge, Pennsylvania",
+      "type": "hub",
+      "summary": "The game's centerpiece hub; both paths reconverge. Hunger, nakedness, disease — some 2,000 dead in camp, and your roster is not exempt. Von Steuben arrives February 23 and his drill questline permanently transforms your brigade's formation mechanics. May 6: the feu de joie for the French alliance rolls down the line. The army that marches out is a different instrument.",
+      "objectives": [
+        {"kind": "hub", "text": "Survive the winter: firewood, forage, huts, hospital — triage with real names attached"},
+        {"kind": "hub", "text": "Complete the von Steuben drill program (upgrades: formation change speed, volley cohesion, bayonet confidence)"},
+        {"kind": "hub", "text": "Stand the feu de joie — the alliance is real"}
+      ],
+      "cutscene": "naked_and_starving",
+      "sources": ["washington_to_laurens_1777", "bodle_valley_forge", "martin_narrative", "steuben_blue_book"]
+    },
+    {
+      "id": "a2_monmouth",
+      "title": "Monmouth",
+      "date": "1778-06-28",
+      "location": "Monmouth Court House, New Jersey",
+      "type": "battle",
+      "weather": "near 100°F — heat kills as surely as lead, both sides",
+      "summary": "Lee's advance collapses into retreat; Washington arrives in a documented fury, turns the army around, and the Valley Forge line trades volleys with British grenadiers in open field — and holds. Mary Hays carries water and then serves her fallen husband's gun beside you. The drill upgrade is the difference and the mission proves it.",
+      "objectives": [
+        {"kind": "primary", "text": "Stabilize the hedgerow line during the retreat's chaos"},
+        {"kind": "primary", "text": "Hold the Perrine Ridge line through the grenadier assaults"},
+        {"kind": "constraint", "text": "Rotate companies out of the sun or lose men to heatstroke"}
+      ],
+      "sources": ["martin_narrative", "royster_revolutionary_people"]
+    },
+    {
+      "id": "a2_rhode_island",
+      "title": "The Rhode Island Line",
+      "date": "1778-08-29",
+      "location": "Aquidneck Island, Rhode Island",
+      "type": "battle",
+      "optional": true,
+      "summary": "Optional. Fight beside the 1st Rhode Island Regiment — recruited largely from enslaved and free Black men and Narragansett/Niantic men — repelling three Hessian assaults on the withdrawal's right flank. Recruits from this mission can join your brigade permanently.",
+      "objectives": [
+        {"kind": "primary", "text": "The right flank holds through three assaults"},
+        {"kind": "secondary", "text": "Counterattack the third assault to cover the army's embarkation"}
+      ],
+      "sources": ["egerton_death_or_liberty", "nash_unknown_revolution"]
+    },
+    {
+      "id": "a2_stony_point",
+      "title": "Bayonets Only",
+      "date": "1779-07-16",
+      "location": "Stony Point, Hudson Highlands, New York",
+      "type": "vignette_night_assault",
+      "weather": "moonless, half-past midnight; tidal marsh at low water",
+      "summary": "Wayne's midnight storm of the 'little Gibraltar': muskets UNLOADED by written order, axemen cutting the abatis, watchword 'The fort's our own.' Stealth erupting into close assault — the volley system deliberately taken away from you for one night.",
+      "objectives": [
+        {"kind": "primary", "text": "Cross the marsh and cut the abatis undiscovered as long as possible"},
+        {"kind": "primary", "text": "Carry the works with the bayonet — your muskets will not fire"},
+        {"kind": "constraint", "text": "Quarter given: the garrison's surrender is accepted (as it historically was — 'the humanity of our brave soldiery')"}
+      ],
+      "sources": ["royster_revolutionary_people", "thacher_military_journal"]
+    },
+    {
+      "id": "a2_treason",
+      "title": "Treason",
+      "date": "1780-09-25",
+      "location": "West Point and Tappan, New York",
+      "type": "cinematic_vignette",
+      "summary": "Arnold's plot unravels; André is taken with the plans in his boot; Arnold escapes down the Hudson. You command a detail at André's execution — the war's saddest hour, heavier still if you fought in Arnold's wake at Saratoga (the game remembers Path B).",
+      "objectives": [
+        {"kind": "primary", "text": "Escort duty: the execution detail at Tappan, October 2"},
+        {"kind": "codex", "text": "Field Journal: Arnold entire — Quebec's hero, Saratoga's fury, and this"}
+      ],
+      "cutscene": "andre_execution",
+      "sources": ["thacher_military_journal", "chernow_washington"]
+    },
+    {
+      "id": "a2_camden",
+      "title": "Camden",
+      "date": "1780-08-16",
+      "location": "north of Camden, South Carolina",
+      "type": "extraction",
+      "branch": "path_c_south_early",
+      "summary": "PATH C (detached south with de Kalb in April 1780). Gates' catastrophe: the militia wing throws down loaded muskets at the first volley; the Maryland and Delaware Continentals stand alone and are wrecked. De Kalb falls with eleven wounds. Cut your way out and bring survivors off the field — the war's darkest playable hour.",
+      "objectives": [
+        {"kind": "primary", "text": "Hold with the Continentals until the envelopment closes, then break out north"},
+        {"kind": "primary", "text": "Every survivor you rally on the Waxhaws road keeps his name on your roll"}
+      ],
+      "sources": ["buchanan_road_to_guilford", "middlekauff_glorious_cause"]
+    },
+    {
+      "id": "a2_race_to_dan",
+      "title": "The Race to the Dan",
+      "date": "1781-02-10",
+      "location": "North Carolina back country to the Dan River, Virginia",
+      "type": "vignette_pursuit_march",
+      "branch": "path_c_south_early",
+      "weather": "winter rains; every river rising",
+      "summary": "PATH C. Greene's masterpiece of retreat: outmarch Cornwallis — who has burned his own baggage to move faster — to the Dan crossings, taking every boat to the far bank. A retreat played as a victory, because it was one.",
+      "objectives": [
+        {"kind": "primary", "text": "Win the crossing points ahead of the British van"},
+        {"kind": "constraint", "text": "The rearguard skirmishes but never decisively engages"}
+      ],
+      "sources": ["buchanan_road_to_guilford", "carbone_greene"]
+    },
+    {
+      "id": "a2_cowpens",
+      "title": "Cowpens",
+      "date": "1781-01-17",
+      "location": "Hannah's Cowpens, South Carolina",
+      "type": "battle",
+      "branch": "path_d_south_greene",
+      "summary": "PATH D (south with Greene, December 1780). Morgan's tactical masterpiece, playable exactly as designed and explained to you by firelight the night before: militia fire two volleys and are ALLOWED to leave; the Continental line holds; Washington's dragoons and the returning militia close the double envelopment. Tarleton's Legion is destroyed in an hour. Trust beats contempt.",
+      "objectives": [
+        {"kind": "primary", "text": "Militia line: two volleys at killing range, then retire by the left — on order, not in panic"},
+        {"kind": "primary", "text": "Main line: the feigned withdrawal, the about-face, one volley at thirty yards, bayonets"},
+        {"kind": "secondary", "text": "The double envelopment closes before the Legion rallies"}
+      ],
+      "sources": ["babits_devil_of_a_whipping", "buchanan_road_to_guilford"]
+    },
+    {
+      "id": "a2_guilford",
+      "title": "Guilford Court House",
+      "date": "1781-03-15",
+      "location": "Guilford Court House, North Carolina",
+      "type": "battle",
+      "branch": "path_d_south_greene",
+      "summary": "PATH D. Three defensive lines sold dear across a mile and a half of woods and fields. At the crisis Cornwallis fires grapeshot into the melee — into his own Guards — to break the clinch. The field is lost; the campaign is won: 'Another such victory would ruin the British Army.'",
+      "objectives": [
+        {"kind": "primary", "text": "First and second lines: bleed the advance, then retire in order"},
+        {"kind": "primary", "text": "Third line: hold the Continentals' ridge until Greene orders the withdrawal"},
+        {"kind": "secondary", "text": "Bring off the guns you can; spike what you cannot"}
+      ],
+      "sources": ["buchanan_road_to_guilford", "babits_long_obstinate_bloody"]
+    },
+    {
+      "id": "a2_march_south",
+      "title": "The March South",
+      "date": "1781-09-05",
+      "location": "Hudson Highlands to Williamsburg, Virginia — 400 miles",
+      "type": "vignette_march",
+      "summary": "The great deception (false ovens at Chatham, forged dispatches for Clinton to intercept) and the allied army's 400-mile march. In Philadelphia the army parades six abreast; at Head of Elk, French silver — hard specie — pays the men for once in the war. De Grasse holds the Chesapeake: the trap sets.",
+      "objectives": [
+        {"kind": "primary", "text": "March discipline across five states without tipping the destination"},
+        {"kind": "hub", "text": "One month's pay in silver: settle debts on your roll, morale surges"}
+      ],
+      "sources": ["chernow_washington", "thacher_military_journal"]
+    },
+    {
+      "id": "a2_yorktown_siege",
+      "title": "The Parallels",
+      "date": "1781-10-06",
+      "location": "Yorktown, Virginia",
+      "type": "siege",
+      "summary": "Dig the first parallel by night, then the second at 300 yards; crew the grand battery as it opens (Washington ceremonially fires the first American gun). Siege warfare by the European book — Vauban's geometry finally working FOR the Americans, because the French fleet holds the bay.",
+      "objectives": [
+        {"kind": "primary", "text": "Complete each parallel's nightly digging quota under fire"},
+        {"kind": "primary", "text": "Grand battery: silence the town's guns battery by battery"},
+        {"kind": "codex", "text": "Field Journal: why the Battle of the Capes, fought without a single American ship, made this siege possible"}
+      ],
+      "sources": ["thacher_military_journal", "martin_narrative", "osborn_deposition"]
+    },
+    {
+      "id": "a2_redoubts",
+      "title": "Redoubts 9 & 10",
+      "date": "1781-10-14",
+      "location": "Yorktown, Virginia — the river redoubts",
+      "type": "battle_night_assault",
+      "weather": "dark of the moon; signal is six shells fired in quick succession",
+      "summary": "The night storm that ends the war's fighting: Hamilton's light infantry takes Redoubt 10 in under ten minutes with unloaded muskets while the French carry Redoubt 9. Axes through the abatis, over the parapet, done before the shock wears off. Joseph Plumb Martin's sappers cut the way — your veterans go over with them.",
+      "objectives": [
+        {"kind": "primary", "text": "Follow the sappers through the abatis in silence"},
+        {"kind": "primary", "text": "Carry Redoubt 10 with the bayonet before the town's guns range in"},
+        {"kind": "constraint", "text": "Quarter given on surrender — recorded and honored"}
+      ],
+      "sources": ["martin_narrative", "chernow_washington"]
+    },
+    {
+      "id": "a2_surrender",
+      "title": "The World Turned Upside Down",
+      "date": "1781-10-19",
+      "location": "the Surrender Field, Yorktown, Virginia",
+      "type": "cinematic",
+      "summary": "The surrender ceremony: the mile-long double line, French in white and Americans in hunting shirts; the British march out with colors cased; O'Hara offers Cornwallis's sword to Rochambeau, who points across the road to Washington, who indicates Lincoln. Three silent gestures carrying the whole meaning of the war — and your muster roll, every name since Lexington, stands in the American line.",
+      "objectives": [],
+      "cutscene": "world_turned_upside_down",
+      "sources": ["thacher_military_journal", "chernow_washington", "camus_military_music"]
+    }
+  ]
+}

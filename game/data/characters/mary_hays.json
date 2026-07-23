@@ -1,0 +1,12 @@
+{
+  "id": "mary_hays",
+  "name": "Mary Ludwig Hays",
+  "born": "1754-10-13",
+  "role": "Camp follower with the Pennsylvania artillery; served her husband's gun at Monmouth",
+  "portrayal": "The documented core of the 'Molly Pitcher' legend, presented as herself: carrying water to the guns in 100-degree heat, taking her husband William's place at the piece when he collapsed. Pennsylvania later granted her a veteran's pension 'for services rendered' — the state's own paper trail.",
+  "documented_beats": [
+    {"date": "1778-06-28", "event": "Serves the gun through the Perrine Ridge cannonade at Monmouth", "mission": "a2_monmouth"}
+  ],
+  "codex_notes": "The codex entry separates the woman from the composite legend ('Molly Pitcher' folds in Margaret Corbin of Fort Washington and others) per docs/08 myth-flag policy — the legend is discussed, the person is portrayed.",
+  "sources": ["martin_narrative", "nash_unknown_revolution"]
+}

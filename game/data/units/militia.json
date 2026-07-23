@@ -1,0 +1,11 @@
+{
+  "id": "militia",
+  "name": "Town & County Militia",
+  "era_notes": "Deadly from cover and walls (Battle Road), brittle in open field against bayonets (Camden). Morgan's Cowpens plan works WITH this truth instead of against it — ask for two volleys, plan the withdrawal.",
+  "weapon": "musket_mixed_civilian",
+  "drill_default": 0,
+  "morale_profile": {"base_cohesion": 0.8, "bayonet_charge_incoming_multiplier": 1.6, "cover_bonus": 1.3},
+  "formations": ["line", "skirmish"],
+  "reload_seconds": 24.0,
+  "sources": ["fischer_paul_reveres_ride", "babits_devil_of_a_whipping"]
+}

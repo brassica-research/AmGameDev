@@ -1,0 +1,20 @@
+{
+  "id": "king_street",
+  "title": "King Street — March 5, 1770",
+  "design_note": "Built strictly from Rex v. Preston / Rex v. Wemms testimony. The scene never shows who said 'Fire' — the sources genuinely disagree, and honoring that ambiguity IS the scene (docs/05). Natural light: moon, snow, one sentry lantern.",
+  "sources": ["rex_v_preston_trial", "adams_legal_papers"],
+  "events": [
+    {"t": 0.0,  "track": "audio",   "cue": "amb_boston_night_snow", "note": "wind, harbor ice, a dog far off"},
+    {"t": 4.0,  "track": "camera",  "rig": "locked_wide", "target": "custom_house_sentry", "note": "one redcoat, one lantern, falling snow"},
+    {"t": 10.0, "track": "caption", "text": "Boston. The fifth of March, 1770.", "attribution": ""},
+    {"t": 16.0, "track": "actor",   "who": "crowd", "cue": "gather_slow", "note": "boys first, then men; snowballs, oyster shells, a thrown club later sworn to in court"},
+    {"t": 38.0, "track": "audio",   "cue": "church_bells_fire_alarm", "note": "bells ring 'fire' into the night — the town thinks there is a blaze; the ambiguity is the scene"},
+    {"t": 52.0, "track": "actor",   "who": "preston_party", "cue": "wedge_through_crowd", "note": "seven privates and a captain, bayonets level, walking INTO the crowd to reach the sentry"},
+    {"t": 78.0, "track": "actor",   "who": "pvt_montgomery", "cue": "struck_falls_rises_fires", "note": "per testimony: knocked down by the club, rises, fires first — no order shown, none proven"},
+    {"t": 80.5, "track": "audio",   "cue": "volley_ragged_then_silence", "note": "seven seconds of smoke and silence before anyone understands"},
+    {"t": 92.0, "track": "camera",  "rig": "slow_push", "target": "attucks_fallen", "note": "Crispus Attucks dead in the snow; no music"},
+    {"t": 104.0, "track": "caption", "text": "Facts are stubborn things; and whatever may be our wishes, our inclinations, or the dictates of our passions, they cannot alter the state of facts and evidence.", "attribution": "John Adams — for the defense, Rex v. Wemms, 1770"},
+    {"t": 116.0, "track": "codex",  "entry": "codex_boston_massacre_trials"},
+    {"t": 118.0, "track": "caption", "text": "The game announces its ethic in scene one: this will not be propaganda.", "attribution": "(design note — remove before ship)"}
+  ]
+}

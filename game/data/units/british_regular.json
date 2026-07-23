@@ -1,0 +1,11 @@
+{
+  "id": "british_regular",
+  "name": "British Regular Infantry",
+  "era_notes": "The finest professional infantry of the age, presented with full respect (docs/03 accuracy commitments): superb volley discipline, terrifying with the bayonet, and commanded by officers who bleed at the same rate as everyone else's.",
+  "weapon": "musket_brown_bess",
+  "drill_default": 2,
+  "morale_profile": {"base_cohesion": 1.1, "bayonet_confidence": 1.2},
+  "formations": ["line", "column", "skirmish", "square"],
+  "reload_seconds": 16.0,
+  "sources": ["mackenzie_diary", "atkinson_british_are_coming", "troiani_soldiers"]
+}

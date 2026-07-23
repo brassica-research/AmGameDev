@@ -1,0 +1,24 @@
+; Engine configuration file.
+; Godot 4.4+ project — see docs/07-technical-design.md
+
+config_version=5
+
+[application]
+
+config/name="Sons of Liberty (working title)"
+config/description="A brigade-scale action game of the American Revolution. History is the spine; your army is the story."
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.4")
+
+[autoload]
+
+GameState="*res://src/core/game_state.gd"
+CampaignDB="*res://src/core/campaign_db.gd"
+
+[debug]
+
+gdscript/warnings/untyped_declaration=1
+
+[rendering]
+
+renderer/rendering_method="forward_plus"

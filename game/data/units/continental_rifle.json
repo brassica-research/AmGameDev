@@ -1,0 +1,13 @@
+{
+  "id": "continental_rifle",
+  "name": "Rifle Corps (Morgan pattern)",
+  "era_notes": "The Morgan tradeoff, mechanically honest: triple effective range and accuracy, roughly half the rate of fire, and NO bayonet — caught reloading in the open, riflemen die. Pair with line infantry or pay for it.",
+  "weapon": "rifle_pennsylvania_long",
+  "drill_default": 2,
+  "morale_profile": {"base_cohesion": 0.9, "melee_vulnerability": 1.5},
+  "formations": ["skirmish"],
+  "reload_seconds": 40.0,
+  "range_multiplier": 3.0,
+  "accuracy_multiplier": 2.5,
+  "sources": ["atkinson_fate_of_the_day", "babits_devil_of_a_whipping"]
+}

@@ -1,0 +1,11 @@
+{
+  "id": "continental_line",
+  "name": "Continental Line Infantry",
+  "era_notes": "Pre-Valley Forge: drill=DRILLED at best, mixed muskets, hunting shirts common. Post-Valley Forge questline: drill=REGULAR, Charleville muskets from French shipments, bayonet confidence unlocked.",
+  "weapon": "musket_charleville_1766",
+  "drill_default": 1,
+  "morale_profile": {"base_cohesion": 1.0, "bayonet_confidence_pre_steuben": 0.6, "bayonet_confidence_post_steuben": 1.0},
+  "formations": ["line", "column", "skirmish", "square"],
+  "reload_seconds": 20.0,
+  "sources": ["steuben_blue_book", "royster_revolutionary_people", "troiani_soldiers"]
+}

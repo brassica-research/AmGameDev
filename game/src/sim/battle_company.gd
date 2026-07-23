@@ -29,6 +29,7 @@ const AT_WILL_DISCIPLINE := 0.85  # unsynchronized aim costs accuracy
 
 var id: String
 var side: int                 # side 0 advances +y, side 1 advances -y
+var lane: int = 0             # battle lane: companies engage their own lane first
 var brigade: Brigade
 var pos_y: float = 0.0
 var prev_pos_y: float = 0.0   # for render interpolation

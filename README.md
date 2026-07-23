@@ -1,4 +1,4 @@
-# TWILIGHT'S GLEAMING (working title)
+# LET TYRANTS SHAKE (working title)
 
 A brigade-scale action game of the American Revolution — inspired by the
 battalion hack-and-slash structure of *Tears of Metal*, but grounded,
@@ -53,6 +53,7 @@ Crown regular company, 240 yards apart.
 | `F` | Toggle volley fire ↔ fire at will (platoons fire on their own clocks) |
 | `C` | Fix bayonets and charge |
 | `R` | Rally (when your line wavers or breaks) |
+| `V` | Toggle cinematic camera (the demo-capture director) |
 | `ENTER` | Restart |
 
 The 15–20 second reload is the heart of the game — commit your volley

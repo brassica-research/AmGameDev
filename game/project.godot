@@ -5,7 +5,7 @@ config_version=5
 
 [application]
 
-config/name="Twilight's Gleaming (working title)"
+config/name="Let Tyrants Shake (working title)"
 config/description="A brigade-scale action game of the American Revolution. History is the spine; your army is the story."
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.4")

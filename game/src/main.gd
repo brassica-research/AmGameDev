@@ -7,7 +7,7 @@ extends Node
 
 func _ready() -> void:
 	print("=====================================================")
-	print("  TWILIGHT'S GLEAMING (working title) — M1 volley prototype")
+	print("  LET TYRANTS SHAKE (working title) — M1 volley prototype")
 	print("=====================================================")
 	_print_campaign_timeline()
 	_run_volley_demo()

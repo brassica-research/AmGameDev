@@ -29,7 +29,7 @@ battalion that fights alongside them. The elements worth carrying over:
 
 ## What we deliberately change
 
-| Tears of Metal | Twilight's Gleaming |
+| Tears of Metal | Let Tyrants Shake |
 |---|---|
 | Hand-drawn, cartoony, exaggerated | Realistic, painterly-grounded; mud, wool, powder smoke |
 | Fictional Scotland, fantasy metal | Documented events, real people, real places, 1770–1789 |

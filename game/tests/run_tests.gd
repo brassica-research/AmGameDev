@@ -9,13 +9,14 @@ var failures := 0
 
 
 func _initialize() -> void:
-	print("== Twilight's Gleaming — deterministic sim test suite ==")
+	print("== Let Tyrants Shake — deterministic sim test suite ==")
 	_test_command_bus()
 	_test_volley_model()
 	_test_morale_model()
 	_test_smoke_grid()
 	_test_break_and_rally()
 	_test_fire_at_will_stagger()
+	_test_lane_targeting()
 	_test_full_battle_terminates()
 	_test_determinism()
 	print("")
@@ -132,6 +133,24 @@ func _test_fire_at_will_stagger() -> void:
 		"platoon fire is staggered — no lockstep cadence")
 	check(a.platoon_shots[0] + a.platoon_shots[1] >= 4,
 		"the rolling fire keeps rolling")
+
+
+func _test_lane_targeting() -> void:
+	print("\n-- Lane targeting")
+	var sim := BattleSim.new()
+	sim.rng.seed = 3
+	var a := BattleSim.make_company("a", 0, "A Company", 10,
+		Formation.Drill.DRILLED, -50.0, sim.rng, 0)
+	var near_cross := BattleSim.make_company("x", 1, "Cross-lane Company", 10,
+		Formation.Drill.DRILLED, -30.0, sim.rng, 1)
+	var far_same := BattleSim.make_company("s", 1, "Same-lane Company", 10,
+		Formation.Drill.DRILLED, 80.0, sim.rng, 0)
+	sim.companies.append(a)
+	sim.companies.append(near_cross)
+	sim.companies.append(far_same)
+	check(sim.nearest_enemy(a) == far_same, "same-lane enemy preferred even when farther")
+	far_same.state = BattleCompany.State.FLED
+	check(sim.nearest_enemy(a) == near_cross, "falls back across lanes when own front is empty")
 
 
 func _test_full_battle_terminates() -> void:

@@ -7,9 +7,10 @@ scoped so each one produces something *playable and judgeable*.
 - ✅ Design bible (docs 01–08)
 - ✅ Godot project scaffold: sim-core architecture stubs, data-driven
   campaign format, sample mission/unit/character/cutscene data
-- ✅ Working title decided: *Twilight's Gleaming* (the anthem echo is
-  1814, not 1775–83 — acknowledged as deliberate; final-title trademark
-  check still due at M2)
+- ✅ Working title: ***Let Tyrants Shake*** — the first line of William
+  Billings' "Chester" (1770), the de facto anthem of New England's war.
+  Period-accurate, and it ties the title directly to the score's Patriot
+  hymn-motif (doc 06). Formal trademark check still due at M2.
 
 ## M1 — The Volley Prototype (grey-box, ~"find the fun") — IN PROGRESS
 The entire game bets on one feeling: a disciplined volley under pressure.

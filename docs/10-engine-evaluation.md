@@ -1,5 +1,8 @@
 # 10 — Engine Evaluation: Godot 4 vs Unreal Engine 5
 
+> **DECISION (July 2026):** Godot confirmed through M2. Re-evaluate only
+> at the M2 exit gates below — "Godot it is until it isn't."
+
 Requested after the scope conversation of July 2026. The question is no
 longer just "brigade combat + hubs" — the concept may expand to include:
 

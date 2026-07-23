@@ -26,16 +26,27 @@ var _failsafe_fired := false
 ## Standard M1 scenario: a drilled Continental company vs a regular
 ## Crown company, 240 yards apart. auto_player=true attaches an AI to
 ## the Continental side too (used by headless tests and demos).
-static func create_demo(seed_value: int, auto_player := false) -> BattleSim:
+## lanes=2 adds a second engagement lane — four companies, each pair
+## fighting on its own asynchronous clock (richer demos, brigade preview).
+static func create_demo(seed_value: int, auto_player := false, lanes := 1) -> BattleSim:
 	var sim := BattleSim.new()
 	sim.rng.seed = seed_value
 	sim.companies.append(make_company(
 		"continentals", 0, "Webb's Additional Continentals",
-		40, Formation.Drill.DRILLED, -120.0, sim.rng))
+		40, Formation.Drill.DRILLED, -120.0, sim.rng, 0))
 	sim.companies.append(make_company(
 		"crown", 1, "His Majesty's 23rd Foot",
-		40, Formation.Drill.REGULAR, 120.0, sim.rng))
+		40, Formation.Drill.REGULAR, 120.0, sim.rng, 0))
 	sim.ais.append(BattleAI.new("crown"))
+	if lanes >= 2:
+		sim.companies.append(make_company(
+			"continentals_2", 0, "Glover's Marblehead Company",
+			40, Formation.Drill.DRILLED, -126.0, sim.rng, 1))
+		sim.companies.append(make_company(
+			"crown_2", 1, "Grenadiers von Rall",
+			40, Formation.Drill.REGULAR, 114.0, sim.rng, 1))
+		sim.ais.append(BattleAI.new("continentals_2"))
+		sim.ais.append(BattleAI.new("crown_2"))
 	if auto_player:
 		sim.ais.append(BattleAI.new("continentals"))
 	return sim
@@ -43,10 +54,11 @@ static func create_demo(seed_value: int, auto_player := false) -> BattleSim:
 
 static func make_company(id: String, side: int, display_name: String,
 		count: int, drill_level: int, start_y: float,
-		rng_ref: RandomNumberGenerator) -> BattleCompany:
+		rng_ref: RandomNumberGenerator, lane := 0) -> BattleCompany:
 	var c := BattleCompany.new()
 	c.id = id
 	c.side = side
+	c.lane = lane
 	c.brigade = Brigade.muster_company(display_name, count, drill_level, rng_ref)
 	c.pos_y = start_y
 	c.prev_pos_y = start_y
@@ -78,16 +90,22 @@ func get_company(id: String) -> BattleCompany:
 	return null
 
 
+## Same-lane enemies are engaged first; a company only turns on another
+## lane once its own front is empty (keeps multi-lane battles coherent
+## while guaranteeing termination when a lane collapses).
 func nearest_enemy(c: BattleCompany) -> BattleCompany:
 	var best: BattleCompany = null
 	var best_d := INF
+	var best_same_lane := false
 	for other in companies:
 		if other.side == c.side or not other.is_active():
 			continue
+		var same := other.lane == c.lane
 		var d := absf(other.pos_y - c.pos_y)
-		if d < best_d:
+		if (same and not best_same_lane) or (same == best_same_lane and d < best_d):
 			best_d = d
 			best = other
+			best_same_lane = same
 	return best
 
 

@@ -7,21 +7,23 @@ scoped so each one produces something *playable and judgeable*.
 - ✅ Design bible (docs 01–08)
 - ✅ Godot project scaffold: sim-core architecture stubs, data-driven
   campaign format, sample mission/unit/character/cutscene data
-- ⬜ Decide final title (working: *Sons of Liberty* — note: Ubisoft used
-  "Sons of Liberty" phrasing never trademark-cleared for games? verify;
-  alternatives: *Muster Roll*, *The Glorious Cause*, *Times That Try*,
-  *A Standing Army*)
+- ✅ Working title decided: *Twilight's Gleaming* (the anthem echo is
+  1814, not 1775–83 — acknowledged as deliberate; final-title trademark
+  check still due at M2)
 
-## M1 — The Volley Prototype (grey-box, ~"find the fun")
+## M1 — The Volley Prototype (grey-box, ~"find the fun") — IN PROGRESS
 The entire game bets on one feeling: a disciplined volley under pressure.
 Prove it in a grey-box field:
-- Player officer + one 40-man company vs AI company
-- Present–Fire hold mechanic, reload rhythm, smoke grid, cohesion/morale,
-  bayonet charge resolution, rout & rally
-- Sim/presentation split + command bus working end-to-end
-- Headless sim tests (determinism, morale thresholds) in CI
-**Exit test:** does holding fire while a line walks at you produce real
-dread in playtests? If not, iterate here — nothing else matters yet.
+- ✅ Player officer's 40-man company vs AI company (`src/sim/`, `src/presentation/`)
+- ✅ Present–Fire hold mechanic, reload rhythm, smoke grid, cohesion/morale,
+  bayonet charge resolution, rout & rally (first-pass tuning values)
+- ✅ Sim/presentation split + command bus working end-to-end (AI issues
+  commands through the same bus as the player)
+- ✅ Headless sim tests (determinism, morale, termination) + GitHub
+  Actions CI (`game/tests/`, `.github/workflows/ci.yml`)
+**Exit test (OPEN):** does holding fire while a line walks at you produce
+real dread in playtests? If not, iterate here — nothing else matters yet.
+Tuning knobs live in `volley.gd`, `morale.gd`, `formation.gd`.
 
 ## M2 — Vertical Slice: "Nineteenth of April"
 Mission 1.5 (Lexington Green → North Bridge → Battle Road) at target

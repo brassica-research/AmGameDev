@@ -14,9 +14,10 @@
 **Honest alternatives:** Unreal 5 buys maximum photoreal fidelity
 (Nanite/Lumen/MetaHuman) at the cost of C++ complexity, binary assets in
 git (needs LFS/Perforce), and heavier iteration. Unity sits between.
-**Recommendation:** prototype in Godot; revisit only if the vertical
-slice hits a fidelity or crowd-scale wall. The design docs and all game
-data (JSON) are engine-agnostic on purpose.
+**Recommendation:** prototype in Godot; decide at the M2 exit gates.
+Full analysis — including the expanded estate-building / town free-roam
+/ conversational-NPC scope — lives in `10-engine-evaluation.md`. The
+design docs and all game data (JSON) are engine-agnostic on purpose.
 
 ## Architecture: simulation core / presentation shell
 

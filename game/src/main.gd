@@ -7,10 +7,12 @@ extends Node
 
 func _ready() -> void:
 	print("=====================================================")
-	print("  SONS OF LIBERTY (working title) — foundation build")
+	print("  TWILIGHT'S GLEAMING (working title) — M1 volley prototype")
 	print("=====================================================")
 	_print_campaign_timeline()
 	_run_volley_demo()
+	if DisplayServer.get_name() != "headless":
+		get_tree().change_scene_to_file.call_deferred("res://scenes/battle.tscn")
 
 
 func _print_campaign_timeline() -> void:

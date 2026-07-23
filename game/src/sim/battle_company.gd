@@ -31,6 +31,11 @@ var id: String
 var side: int                 # side 0 advances +y, side 1 advances -y
 var lane: int = 0             # battle lane: companies engage their own lane first
 var brigade: Brigade
+## Scenario flags (night assault — docs/03 mission 2.12 "Bayonets Only"):
+var bayonets_only := false    # muskets unloaded by written order; fire commands are ignored
+var is_garrison := false      # defends in place; subject to the night surrender rule
+var detect_range := 55.0      # sentry alertness: how close a silent column gets at night
+var advance_speed := ADVANCE_SPEED  # light infantry columns move at the quick step
 var pos_y: float = 0.0
 var prev_pos_y: float = 0.0   # for render interpolation
 var move_order: int = 0       # -1 withdraw, 0 halt, +1 advance

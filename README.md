@@ -60,6 +60,12 @@ The 15–20 second reload is the heart of the game — commit your volley
 badly and the field belongs to the bayonet. The AI plays by the same
 rules through the same command bus.
 
+Scenarios (command-line, after `--`): the default open-field meeting
+engagement, or `--scenario=night_assault` — the Stony Point pattern,
+where you lead a bayonets-only column (your muskets are unloaded by
+order and the fire keys will not save you) against a garrison whose
+sentries are listening for you in the dark.
+
 Headless test suite (same one CI runs):
 
 ```

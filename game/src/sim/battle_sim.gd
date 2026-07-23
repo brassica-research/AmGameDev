@@ -22,6 +22,10 @@ var winner_side := -1
 var battle_log: Array[String] = []
 var _failsafe_fired := false
 
+## Night-assault scenario state (docs/03 mission 2.12 "Bayonets Only").
+var night := false
+var alarm_raised := false
+
 
 ## Standard M1 scenario: a drilled Continental company vs a regular
 ## Crown company, 240 yards apart. auto_player=true attaches an AI to
@@ -52,6 +56,37 @@ static func create_demo(seed_value: int, auto_player := false, lanes := 1) -> Ba
 	return sim
 
 
+## The Stony Point pattern (Jul 16, 1779): light-infantry columns with
+## muskets UNLOADED by order approach a garrison in the dark. Sentries
+## detect them at jittered ranges; the alarm wakes the garrison; the
+## columns go in with the bayonet alone. Garrison companies that break
+## in the melee throw down their arms — quarter given, as it was.
+static func create_night_assault(seed_value: int, auto_player := false, lanes := 2) -> BattleSim:
+	var sim := BattleSim.new()
+	sim.rng.seed = seed_value
+	sim.night = true
+	var atk_names := ["Wayne's Right Column", "Butler's Left Column"]
+	var def_names := ["17th Foot Piquet", "Grenadier Piquet"]
+	var atk_ids := ["continentals", "continentals_2"]
+	var def_ids := ["crown", "crown_2"]
+	for lane in maxi(1, mini(lanes, 2)):
+		var atk := make_company(atk_ids[lane], 0, atk_names[lane],
+			40, Formation.Drill.VETERAN, -80.0 - 4.0 * float(lane), sim.rng, lane)
+		atk.bayonets_only = true
+		atk.platoon_loaded = [false, false]
+		atk.advance_speed = 1.7  # picked men at the quick step
+		sim.companies.append(atk)
+		var def := make_company(def_ids[lane], 1, def_names[lane],
+			32, Formation.Drill.REGULAR, 25.0 + 3.0 * float(lane), sim.rng, lane)
+		def.is_garrison = true
+		def.detect_range = sim.rng.randf_range(45.0, 65.0)
+		sim.companies.append(def)
+		sim.ais.append(BattleAI.new(def_ids[lane], "garrison"))
+		if lane > 0 or auto_player:
+			sim.ais.append(BattleAI.new(atk_ids[lane], "assault_column"))
+	return sim
+
+
 static func make_company(id: String, side: int, display_name: String,
 		count: int, drill_level: int, start_y: float,
 		rng_ref: RandomNumberGenerator, lane := 0) -> BattleCompany:
@@ -73,6 +108,7 @@ func step() -> void:
 		ai.think(self)
 	for cmd in bus.drain_through(tick):
 		_apply(cmd)
+	_update_night_detection()
 	for c in companies:
 		c.prev_pos_y = c.pos_y
 	for c in companies:
@@ -155,15 +191,17 @@ func _apply(cmd: Dictionary) -> void:
 				c.state = BattleCompany.State.STEADY
 				c.move_order = -1
 		"present":
-			if c.state == BattleCompany.State.STEADY:
+			if c.state == BattleCompany.State.STEADY and not c.bayonets_only:
 				c.state = BattleCompany.State.PRESENTING
 				c.move_order = 0
 				c.present_hold = 0.0
 		"fire":
-			if c.state == BattleCompany.State.PRESENTING and c.any_loaded():
+			if c.state == BattleCompany.State.PRESENTING and c.any_loaded() and not c.bayonets_only:
 				_fire_volley(c)
 		"fire_at_will":
-			if c.fire_mode != BattleCompany.FireMode.AT_WILL:
+			if c.bayonets_only:
+				pass
+			elif c.fire_mode != BattleCompany.FireMode.AT_WILL:
 				c.fire_mode = BattleCompany.FireMode.AT_WILL
 				if c.state == BattleCompany.State.PRESENTING:
 					c.state = BattleCompany.State.STEADY
@@ -213,8 +251,9 @@ func _fire_platoon(c: BattleCompany, p: int, target: BattleCompany,
 		return
 	var dist := absf(target.pos_y - c.pos_y)
 	var smoke_v := smoke.sample_between(c.pos_y, target.pos_y)
+	var disc := discipline * (0.6 if night else 1.0)  # firing at shapes in the dark
 	var hits := VolleyModel.resolve(shooters, dist, smoke_v,
-		c.cohesion(), c.drill(), hold_bonus, rng, discipline)
+		c.cohesion(), c.drill(), hold_bonus, rng, disc)
 	target.brigade.take_casualties(hits, rng)
 	if morale_event >= 0:
 		target.brigade.take_morale_event(morale_event)
@@ -236,13 +275,14 @@ func _update_company(c: BattleCompany) -> void:
 	if not c.is_active():
 		return
 	var dt := SimClock.TICK_DT
-	for p in BattleCompany.PLATOON_COUNT:
-		if not c.platoon_loaded[p]:
-			c.platoon_reload[p] -= dt
-			if c.platoon_reload[p] <= 0.0:
-				c.platoon_reload[p] = 0.0
-				c.platoon_loaded[p] = true
-				c.platoon_ready_delay[p] = rng.randf_range(0.4, 2.4)
+	if not c.bayonets_only:  # unloaded-by-order muskets stay unloaded
+		for p in BattleCompany.PLATOON_COUNT:
+			if not c.platoon_loaded[p]:
+				c.platoon_reload[p] -= dt
+				if c.platoon_reload[p] <= 0.0:
+					c.platoon_reload[p] = 0.0
+					c.platoon_loaded[p] = true
+					c.platoon_ready_delay[p] = rng.randf_range(0.4, 2.4)
 	if c.rally_left > 0.0:
 		c.rally_left -= dt
 
@@ -261,6 +301,12 @@ func _update_company(c: BattleCompany) -> void:
 		return
 
 	if c.cohesion() < MoraleModel.BREAK_THRESHOLD:
+		# Night surrender rule: a garrison broken at bayonet point cries
+		# for quarter — and receives it, as at Stony Point (docs/03 2.12).
+		if night and c.is_garrison and c.state == BattleCompany.State.MELEE:
+			c.state = BattleCompany.State.FLED
+			_log("%s throws down its arms — quarter is given." % c.brigade.display_name)
+			return
 		c.state = BattleCompany.State.BROKEN
 		c.move_order = 0
 		c.melee_accum = 0.0
@@ -289,7 +335,7 @@ func _update_company(c: BattleCompany) -> void:
 						c.brigade.display_name, target.brigade.display_name])
 		BattleCompany.State.STEADY:
 			if c.move_order != 0:
-				var speed := BattleCompany.ADVANCE_SPEED if c.move_order > 0 else -BattleCompany.WITHDRAW_SPEED
+				var speed := c.advance_speed if c.move_order > 0 else -BattleCompany.WITHDRAW_SPEED
 				c.pos_y = clampf(c.pos_y + c.facing() * speed * dt, -FIELD_EDGE, FIELD_EDGE)
 			elif c.fire_mode == BattleCompany.FireMode.AT_WILL:
 				_update_fire_at_will(c, dt)
@@ -313,6 +359,11 @@ func _update_fire_at_will(c: BattleCompany, dt: float) -> void:
 					MoraleModel.Event.PLATOON_VOLLEY_RECEIVED)
 
 
+## In the dark, a lost melee collapses faster — confusion multiplies steel.
+func _melee_rate() -> float:
+	return MELEE_CASUALTY_RATE * (1.5 if night else 1.0)
+
+
 func _update_melee() -> void:
 	var dt := SimClock.TICK_DT
 	for a in companies:
@@ -325,7 +376,7 @@ func _update_melee() -> void:
 			a.move_order = 0
 			continue
 		# b cuts into a this tick; the reverse happens on b's iteration.
-		a.melee_accum += float(b.effectives()) * MELEE_CASUALTY_RATE * b.bayonet_confidence() * dt
+		a.melee_accum += float(b.effectives()) * _melee_rate() * b.bayonet_confidence() * dt
 		if a.melee_accum >= 1.0:
 			var n := int(a.melee_accum)
 			a.melee_accum -= float(n)
@@ -333,6 +384,26 @@ func _update_melee() -> void:
 			if a.effectives() == 0:
 				a.state = BattleCompany.State.DESTROYED
 				_log("%s is destroyed in the melee." % a.brigade.display_name)
+
+
+## Night detection: sentries spot the silent columns at their own
+## jittered ranges. One challenge wakes the whole garrison.
+func _update_night_detection() -> void:
+	if not night or alarm_raised:
+		return
+	for atk in companies:
+		if atk.side != 0 or not atk.is_active():
+			continue
+		for def in companies:
+			if not def.is_garrison or not def.is_active():
+				continue
+			if absf(def.pos_y - atk.pos_y) <= def.detect_range:
+				alarm_raised = true
+				_log("A challenge rings out of the dark — THE ALARM IS RAISED!")
+				for g in companies:
+					if g.is_garrison and g.is_active():
+						g.brigade.take_morale_event(MoraleModel.Event.NIGHT_ALARM)
+				return
 
 
 ## Auto-battle guarantees: force a decision late, and if bayonets still

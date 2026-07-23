@@ -14,6 +14,7 @@ enum Event {
 	DRUMS_SILENCED,
 	BAYONET_CHARGE_INCOMING,
 	FRIEND_ROUTED,       # contagion: watching another unit break
+	NIGHT_ALARM,         # jolted awake: a silent column is already inside musket range
 }
 
 const DRAIN := {
@@ -25,6 +26,7 @@ const DRAIN := {
 	Event.DRUMS_SILENCED: 0.05,
 	Event.BAYONET_CHARGE_INCOMING: 0.15,
 	Event.FRIEND_ROUTED: 0.10,
+	Event.NIGHT_ALARM: 0.15,
 }
 
 ## Below WAVER units obey slowly and fire raggedly; below BREAK they rout.

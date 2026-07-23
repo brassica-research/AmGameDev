@@ -12,10 +12,11 @@ extends Node3D
 ##   V toggle cinematic camera · ENTER restart
 ##
 ## Demo mode (used by the capture workflow): pass user args after `--`,
-##   --auto            player company is AI-driven (auto-battle)
-##   --lanes=2         two engagement lanes (four companies)
-##   --start-range=N   opening distance between the lines, in yards
-##   --quit-after=N    quit N seconds in (or ~6 s after the verdict)
+##   --auto                    player company is AI-driven (auto-battle)
+##   --scenario=night_assault  bayonets-only night storm (Stony Point pattern)
+##   --lanes=2                 two engagement lanes (four companies)
+##   --start-range=N           opening distance in yards (field scenario only)
+##   --quit-after=N            quit N seconds in (or ~6 s after the verdict)
 
 const PLAYER_ID := "continentals"
 const FILES := 20          # men per rank in the grey-box line
@@ -43,9 +44,11 @@ var _elapsed := 0.0
 var _over_linger := 0.0
 var _anim_time := 0.0
 
+var _scenario := "field"
 var _cinematic := false
 var _shot := SHOT_AERIAL
 var _shot_age := 0.0
+var _shot_max_age := SHOT_MAX_AGE
 var _cycle_index := 0
 var _focus_lane := 0
 
@@ -65,17 +68,22 @@ var _log_label: Label
 func _ready() -> void:
 	var args := _parse_user_args()
 	_auto = args.has("auto")
+	_scenario = String(args.get("scenario", "field"))
 	_lanes = clampi(int(String(args.get("lanes", "1"))), 1, 2)
 	_quit_after = float(String(args.get("quit-after", "0")))
 	_cinematic = _auto
-	sim = BattleSim.create_demo(17750419, _auto, _lanes)
-	var start_range := float(String(args.get("start-range", "240")))
-	if start_range != 240.0:
-		var half := start_range / 2.0
-		for c in sim.companies:
-			var stagger := 3.0 * float(c.lane)
-			c.pos_y = (-half - stagger) if c.side == 0 else (half - stagger * 0.5)
-			c.prev_pos_y = c.pos_y
+	if _scenario == "night_assault":
+		sim = BattleSim.create_night_assault(17790716, _auto, _lanes)  # July 16, 1779
+		_shot_max_age = 5.0  # the dark cuts faster
+	else:
+		sim = BattleSim.create_demo(17750419, _auto, _lanes)
+		var start_range := float(String(args.get("start-range", "240")))
+		if start_range != 240.0:
+			var half := start_range / 2.0
+			for c in sim.companies:
+				var stagger := 3.0 * float(c.lane)
+				c.pos_y = (-half - stagger) if c.side == 0 else (half - stagger * 0.5)
+				c.prev_pos_y = c.pos_y
 	_build_environment()
 	_build_field()
 	for c in sim.companies:
@@ -168,16 +176,24 @@ func _build_environment() -> void:
 	var we := WorldEnvironment.new()
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.66, 0.68, 0.70)  # overcast — doc 06 light rules
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.84, 0.84, 0.87)
-	env.ambient_light_energy = 0.6
+	var sun := DirectionalLight3D.new()
+	if sim.night:
+		env.background_color = Color(0.05, 0.06, 0.10)  # doc 06: night scenes are dark
+		env.ambient_light_color = Color(0.35, 0.40, 0.56)
+		env.ambient_light_energy = 0.28
+		sun.rotation_degrees = Vector3(-36.0, -25.0, 0.0)  # low moon
+		sun.light_energy = 0.35
+		sun.light_color = Color(0.68, 0.76, 0.95)
+	else:
+		env.background_color = Color(0.66, 0.68, 0.70)  # overcast — doc 06 light rules
+		env.ambient_light_color = Color(0.84, 0.84, 0.87)
+		env.ambient_light_energy = 0.6
+		sun.rotation_degrees = Vector3(-44.0, 40.0, 0.0)
+		sun.light_energy = 1.15
+		sun.light_color = Color(1.0, 0.96, 0.88)  # late-afternoon warmth
 	we.environment = env
 	add_child(we)
-	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-44.0, 40.0, 0.0)
-	sun.light_energy = 1.15
-	sun.light_color = Color(1.0, 0.96, 0.88)  # late-afternoon warmth
 	add_child(sun)
 	_camera = Camera3D.new()
 	add_child(_camera)
@@ -189,7 +205,7 @@ func _build_field() -> void:
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(120.0, 400.0)
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.26, 0.30, 0.20)
+	mat.albedo_color = Color(0.11, 0.13, 0.10) if sim.night else Color(0.26, 0.30, 0.20)
 	plane.material = mat
 	ground.mesh = plane
 	add_child(ground)
@@ -338,6 +354,15 @@ func _spawn_flash(pos: Vector3) -> void:
 	mi.position = pos
 	_fx_parent.add_child(mi)
 	_fx.append({"n": mi, "mat": mat, "age": 0.0, "life": 0.13, "kind": "flash"})
+	if sim.night:
+		# At night the flash owns the frame: a brief real light.
+		var lamp := OmniLight3D.new()
+		lamp.light_color = Color(1.0, 0.75, 0.4)
+		lamp.light_energy = 5.0
+		lamp.omni_range = 14.0
+		lamp.position = pos + Vector3(0, 0.6, 0)
+		_fx_parent.add_child(lamp)
+		_fx.append({"n": lamp, "mat": null, "age": 0.0, "life": 0.14, "kind": "light"})
 
 
 func _spawn_puff(pos: Vector3) -> void:
@@ -359,24 +384,28 @@ func _update_fx(delta: float) -> void:
 	var keep: Array[Dictionary] = []
 	for fx in _fx:
 		fx["age"] = float(fx["age"]) + delta
-		var n: MeshInstance3D = fx["n"]
+		var n: Node3D = fx["n"]
 		var t := float(fx["age"]) / float(fx["life"])
 		if t >= 1.0:
 			n.queue_free()
 			continue
-		if String(fx["kind"]) == "puff":
-			n.position.y += 0.55 * delta
-			n.scale = Vector3.ONE * (1.0 + 1.1 * float(fx["age"]))
-			var mat: StandardMaterial3D = fx["mat"]
-			mat.albedo_color.a = 0.5 * (1.0 - t)
+		match String(fx["kind"]):
+			"puff":
+				n.position.y += 0.55 * delta
+				n.scale = Vector3.ONE * (1.0 + 1.1 * float(fx["age"]))
+				var mat: StandardMaterial3D = fx["mat"]
+				mat.albedo_color.a = 0.5 * (1.0 - t)
+			"light":
+				(n as OmniLight3D).light_energy = 5.0 * (1.0 - t)
 		keep.append(fx)
 	_fx = keep
 
 
 func _update_smoke() -> void:
+	var strength := 0.22 if sim.night else 0.4
 	for i in _smoke_boxes.size():
 		var mat := (_smoke_boxes[i].mesh as BoxMesh).material as StandardMaterial3D
-		mat.albedo_color.a = clampf(sim.smoke.cells[i], 0.0, 1.0) * 0.4
+		mat.albedo_color.a = clampf(sim.smoke.cells[i], 0.0, 1.0) * strength
 
 
 # --- cameras -----------------------------------------------------------
@@ -427,16 +456,18 @@ func _update_camera_cinematic(delta: float) -> void:
 	var rz := _render_z(red) if red != null else bz
 	var dist := absf(rz - bz)
 
+	var opening_shot := SHOT_TRACK if sim.night else SHOT_AERIAL
+	var opening_secs := 6.0 if sim.night else 10.0
 	if forced >= 0:
 		if _shot != forced:
 			_cut(forced)
-	elif _elapsed < 10.0:
-		if _shot != SHOT_AERIAL:
-			_cut(SHOT_AERIAL)
+	elif _elapsed < opening_secs:
+		if _shot != opening_shot:
+			_cut(opening_shot)
 	elif dist > 95.0:
 		if _shot != SHOT_TRACK and _shot_age > 3.0:
 			_cut(SHOT_TRACK)
-	elif _shot_age > SHOT_MAX_AGE or not FIREFIGHT_CYCLE.has(_shot):
+	elif _shot_age > _shot_max_age or not FIREFIGHT_CYCLE.has(_shot):
 		_cycle_index += 1
 		if _lanes > 1 and _cycle_index % 2 == 0:
 			_focus_lane = 1 - _focus_lane
@@ -483,6 +514,9 @@ func _update_hud() -> void:
 	var lines: Array[String] = []
 	lines.append("LET TYRANTS SHAKE — M1 volley prototype")
 	lines.append("[1] advance  [2] halt  [3] withdraw   [SPACE hold] present -> [release] FIRE   [F] volley/at-will  [C] charge  [R] rally  [V] camera  [ENTER] restart")
+	if sim.night:
+		var alarm := "THE ALARM IS RAISED" if sim.alarm_raised else "silence — the columns are undiscovered"
+		lines.append("BAYONETS ONLY — night storm, Stony Point pattern   |   %s" % alarm)
 	lines.append("")
 	if pc != null:
 		var hold_txt := "  hold %.1fs (bonus %.0f%%)" % [pc.present_hold, pc.hold_bonus() * 100.0] \
@@ -515,6 +549,8 @@ func _update_hud() -> void:
 
 
 func _platoon_txt(c: BattleCompany, p: int) -> String:
+	if c.bayonets_only:
+		return "%s: UNLOADED BY ORDER" % BattleCompany.PLATOON_NAMES[p]
 	if c.platoon_loaded[p]:
 		return "%s loaded" % BattleCompany.PLATOON_NAMES[p]
 	return "%s %.0fs" % [BattleCompany.PLATOON_NAMES[p], c.platoon_reload[p]]

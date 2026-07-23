@@ -17,6 +17,7 @@ func _initialize() -> void:
 	_test_break_and_rally()
 	_test_fire_at_will_stagger()
 	_test_lane_targeting()
+	_test_night_assault()
 	_test_full_battle_terminates()
 	_test_determinism()
 	print("")
@@ -151,6 +152,25 @@ func _test_lane_targeting() -> void:
 	check(sim.nearest_enemy(a) == far_same, "same-lane enemy preferred even when farther")
 	far_same.state = BattleCompany.State.FLED
 	check(sim.nearest_enemy(a) == near_cross, "falls back across lanes when own front is empty")
+
+
+func _test_night_assault() -> void:
+	print("\n-- Night assault: bayonets only (Stony Point pattern)")
+	var sim := BattleSim.create_night_assault(17790716, true, 2)
+	var steps := 0
+	while not sim.over and steps < 6000:
+		sim.step()
+		steps += 1
+	check(sim.over and sim.tick < 4000, "the storm is decided quickly (tick %d)" % sim.tick)
+	var attacker_shots := 0
+	for id in ["continentals", "continentals_2"]:
+		var c := sim.get_company(id)
+		attacker_shots += c.platoon_shots[0] + c.platoon_shots[1]
+	check(attacker_shots == 0, "the columns never fire — muskets unloaded by order")
+	var log_text := "\n".join(sim.battle_log)
+	check(log_text.contains("ALARM"), "the sentries raise the alarm")
+	check(log_text.contains("closes with the bayonet"), "the assault goes in with steel")
+	check(sim.winner_side == 0, "the works are carried")
 
 
 func _test_full_battle_terminates() -> void:

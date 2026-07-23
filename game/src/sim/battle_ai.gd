@@ -12,13 +12,15 @@ const THINK_PERIOD := 10          # thinks every 0.5 s, on its own phase
 const MIN_CHARGE_RANGE := 120.0
 
 var company_id: String
+var doctrine := "line"            # "line" | "assault_column" | "garrison"
 var _phase := 0
 var _engage_range := 80.0         # personal doctrine, varies per commander
 var _hold_target := 2.5           # redrawn after every volley
 
 
-func _init(id: String) -> void:
+func _init(id: String, doctrine_name := "line") -> void:
 	company_id = id
+	doctrine = doctrine_name
 	_phase = absi(id.hash()) % THINK_PERIOD
 	_engage_range = 68.0 + float(absi(id.hash()) % 25)
 
@@ -38,6 +40,32 @@ func think(sim: BattleSim) -> void:
 	if foe == null:
 		return
 	var dist := absf(foe.pos_y - me.pos_y)
+
+	if doctrine == "assault_column":
+		# Silence until discovered; the instant the alarm is up, steel.
+		if not sim.alarm_raised:
+			if me.move_order != 1:
+				sim.bus.submit(sim.tick, company_id, "advance")
+		elif dist < 90.0:
+			sim.bus.submit(sim.tick, company_id, "charge")
+		elif me.move_order != 1:
+			sim.bus.submit(sim.tick, company_id, "advance")
+		return
+
+	if doctrine == "garrison":
+		if not sim.alarm_raised:
+			return  # asleep, at ease, or staring at the wrong dark
+		if me.move_order != 0 and me.state != BattleCompany.State.PRESENTING:
+			sim.bus.submit(sim.tick, company_id, "halt")
+			return
+		if foe.state == BattleCompany.State.BROKEN and dist < 40.0:
+			sim.bus.submit(sim.tick, company_id, "charge")
+			return
+		# No time for parade-ground volleys with bayonets coming out of
+		# the dark: get fire down the glacis at once.
+		if me.fire_mode == BattleCompany.FireMode.VOLLEY:
+			sim.bus.submit(sim.tick, company_id, "fire_at_will")
+		return
 
 	# A shaken enemy is an invitation the bayonet answers.
 	var foe_shaken := foe.state == BattleCompany.State.BROKEN \

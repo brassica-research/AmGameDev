@@ -15,6 +15,7 @@ func _initialize() -> void:
 	_test_morale_model()
 	_test_smoke_grid()
 	_test_break_and_rally()
+	_test_fire_at_will_stagger()
 	_test_full_battle_terminates()
 	_test_determinism()
 	print("")
@@ -109,6 +110,28 @@ func _test_break_and_rally() -> void:
 		sim.step()
 	check(c.state == BattleCompany.State.STEADY, "the rally reforms the company")
 	check(c.cohesion() >= MoraleModel.WAVER_THRESHOLD, "rallied cohesion clears the waver line")
+
+
+func _test_fire_at_will_stagger() -> void:
+	print("\n-- Fire at will: asynchronous platoon cadence")
+	var sim := BattleSim.new()
+	sim.rng.seed = 7
+	var a := BattleSim.make_company("a", 0, "A Company", 40,
+		Formation.Drill.DRILLED, -30.0, sim.rng)
+	var b := BattleSim.make_company("b", 1, "B Company", 40,
+		Formation.Drill.REGULAR, 30.0, sim.rng)
+	sim.companies.append(a)
+	sim.companies.append(b)
+	sim.bus.submit(1, "a", "fire_at_will")
+	for i in 1200:  # 60 seconds
+		sim.step()
+	check(a.fire_mode == BattleCompany.FireMode.AT_WILL, "fire-at-will mode engages")
+	check(a.platoon_shots[0] > 0 and a.platoon_shots[1] > 0,
+		"both platoons fire on their own clocks")
+	check(a.platoon_first_fire_tick[0] != a.platoon_first_fire_tick[1],
+		"platoon fire is staggered — no lockstep cadence")
+	check(a.platoon_shots[0] + a.platoon_shots[1] >= 4,
+		"the rolling fire keeps rolling")
 
 
 func _test_full_battle_terminates() -> void:

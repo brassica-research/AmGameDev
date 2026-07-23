@@ -47,18 +47,6 @@ func is_fighting() -> bool:
 	return effectives() > 0 and cohesion > MoraleModel.BREAK_THRESHOLD
 
 
-func fire_volley(target: Brigade, range_yards: float, smoke: float,
-		rng: RandomNumberGenerator, hold_bonus: float = 0.0) -> int:
-	if not is_fighting():
-		return 0
-	volleys_fired += 1
-	var hits := VolleyModel.resolve(effectives(), range_yards, smoke,
-		cohesion, formation.drill, hold_bonus, rng)
-	target.take_casualties(hits, rng)
-	target.take_morale_event(MoraleModel.Event.VOLLEY_RECEIVED)
-	return hits
-
-
 func take_casualties(count: int, rng: RandomNumberGenerator) -> void:
 	var down := 0
 	for s in soldiers:

@@ -1,0 +1,1 @@
+capture 1 — first recording of the M1 battle after the asynchronous-cadence rework (platoon fire, fire-at-will, jittered AI)

@@ -102,9 +102,12 @@ func state_hash() -> int:
 		h = _mix(h, c.effectives())
 		h = _mix(h, int(roundf(c.cohesion() * 4096.0)))
 		h = _mix(h, c.state)
-		h = _mix(h, 1 if c.loaded else 0)
-		h = _mix(h, int(roundf(c.reload_left * 20.0)))
+		h = _mix(h, c.fire_mode)
 		h = _mix(h, int(roundf(c.present_hold * 20.0)))
+		for p in BattleCompany.PLATOON_COUNT:
+			h = _mix(h, 1 if c.platoon_loaded[p] else 0)
+			h = _mix(h, int(roundf(c.platoon_reload[p] * 20.0)))
+			h = _mix(h, c.platoon_shots[p])
 	h = _mix(h, int(roundf(smoke.total() * 4096.0)))
 	return h
 
@@ -139,8 +142,22 @@ func _apply(cmd: Dictionary) -> void:
 				c.move_order = 0
 				c.present_hold = 0.0
 		"fire":
-			if c.state == BattleCompany.State.PRESENTING and c.loaded:
-				_fire(c)
+			if c.state == BattleCompany.State.PRESENTING and c.any_loaded():
+				_fire_volley(c)
+		"fire_at_will":
+			if c.fire_mode != BattleCompany.FireMode.AT_WILL:
+				c.fire_mode = BattleCompany.FireMode.AT_WILL
+				if c.state == BattleCompany.State.PRESENTING:
+					c.state = BattleCompany.State.STEADY
+					c.present_hold = 0.0
+				for p in BattleCompany.PLATOON_COUNT:
+					if c.platoon_loaded[p]:
+						c.platoon_ready_delay[p] = rng.randf_range(0.4, 2.4)
+				_log("%s fires at will." % c.brigade.display_name)
+		"volley_fire":
+			if c.fire_mode != BattleCompany.FireMode.VOLLEY:
+				c.fire_mode = BattleCompany.FireMode.VOLLEY
+				_log("%s re-forms for volley fire." % c.brigade.display_name)
 		"charge":
 			if c.state == BattleCompany.State.STEADY or c.state == BattleCompany.State.PRESENTING:
 				c.state = BattleCompany.State.CHARGING
@@ -151,25 +168,48 @@ func _apply(cmd: Dictionary) -> void:
 			c.rally_left = 10.0
 
 
-func _fire(c: BattleCompany) -> void:
+## A commanded volley: every loaded platoon fires as one crash, with the
+## full Present-hold steadiness bonus and the full morale shock.
+func _fire_volley(c: BattleCompany) -> void:
 	var target := nearest_enemy(c)
 	if target == null:
 		return
-	var dist := absf(target.pos_y - c.pos_y)
-	var smoke_v := smoke.sample_between(c.pos_y, target.pos_y)
-	var hits := VolleyModel.resolve(c.effectives(), dist, smoke_v,
-		c.cohesion(), c.drill(), c.hold_bonus(), rng)
-	c.brigade.volleys_fired += 1
-	target.brigade.take_casualties(hits, rng)
-	target.brigade.take_morale_event(MoraleModel.Event.VOLLEY_RECEIVED)
-	smoke.deposit(c.pos_y + c.facing() * 3.0, 0.35 * float(c.effectives()) / 40.0)
-	c.loaded = false
-	c.reload_left = Formation.RELOAD_TIME[c.drill()]
+	var fired := 0
+	for p in BattleCompany.PLATOON_COUNT:
+		if c.platoon_loaded[p]:
+			_fire_platoon(c, p, target, c.hold_bonus(), 1.0, -1)
+			fired += 1
+	if fired > 0:
+		c.brigade.volleys_fired += 1
+		target.brigade.take_morale_event(MoraleModel.Event.VOLLEY_RECEIVED)
 	c.present_hold = 0.0
 	c.state = BattleCompany.State.STEADY
-	_log("%s fires at %d yards — %d hit (smoke %.0f%%)" % [
-		c.brigade.display_name, int(dist), hits, smoke_v * 100.0])
-	if target.effectives() == 0:
+
+
+## One platoon discharges. morale_event < 0 means the caller applies the
+## shock itself (a commanded volley is one crash, not one per platoon).
+func _fire_platoon(c: BattleCompany, p: int, target: BattleCompany,
+		hold_bonus: float, discipline: float, morale_event: int) -> void:
+	var shooters := c.platoon_effectives(p)
+	if shooters == 0 or not target.is_active():
+		return
+	var dist := absf(target.pos_y - c.pos_y)
+	var smoke_v := smoke.sample_between(c.pos_y, target.pos_y)
+	var hits := VolleyModel.resolve(shooters, dist, smoke_v,
+		c.cohesion(), c.drill(), hold_bonus, rng, discipline)
+	target.brigade.take_casualties(hits, rng)
+	if morale_event >= 0:
+		target.brigade.take_morale_event(morale_event)
+	smoke.deposit(c.pos_y + c.facing() * 3.0, 0.35 * float(shooters) / 40.0)
+	c.platoon_loaded[p] = false
+	c.platoon_reload[p] = Formation.RELOAD_TIME[c.drill()] * rng.randf_range(0.9, 1.2)
+	c.platoon_shots[p] += 1
+	if c.platoon_first_fire_tick[p] < 0:
+		c.platoon_first_fire_tick[p] = tick
+	_log("%s, %s fires at %d yards — %d hit (smoke %.0f%%)" % [
+		c.brigade.display_name, BattleCompany.PLATOON_NAMES[p],
+		int(dist), hits, smoke_v * 100.0])
+	if target.effectives() == 0 and target.state != BattleCompany.State.DESTROYED:
 		target.state = BattleCompany.State.DESTROYED
 		_log("%s is destroyed." % target.brigade.display_name)
 
@@ -178,11 +218,13 @@ func _update_company(c: BattleCompany) -> void:
 	if not c.is_active():
 		return
 	var dt := SimClock.TICK_DT
-	if not c.loaded:
-		c.reload_left -= dt
-		if c.reload_left <= 0.0:
-			c.reload_left = 0.0
-			c.loaded = true
+	for p in BattleCompany.PLATOON_COUNT:
+		if not c.platoon_loaded[p]:
+			c.platoon_reload[p] -= dt
+			if c.platoon_reload[p] <= 0.0:
+				c.platoon_reload[p] = 0.0
+				c.platoon_loaded[p] = true
+				c.platoon_ready_delay[p] = rng.randf_range(0.4, 2.4)
 	if c.rally_left > 0.0:
 		c.rally_left -= dt
 
@@ -231,10 +273,26 @@ func _update_company(c: BattleCompany) -> void:
 			if c.move_order != 0:
 				var speed := BattleCompany.ADVANCE_SPEED if c.move_order > 0 else -BattleCompany.WITHDRAW_SPEED
 				c.pos_y = clampf(c.pos_y + c.facing() * speed * dt, -FIELD_EDGE, FIELD_EDGE)
+			elif c.fire_mode == BattleCompany.FireMode.AT_WILL:
+				_update_fire_at_will(c, dt)
 
 	if c.state == BattleCompany.State.STEADY or c.state == BattleCompany.State.PRESENTING:
 		c.brigade.cohesion = minf(1.0, c.cohesion()
 			+ MoraleModel.recovery_rate(true, true, false, c.drill()) * SimClock.TICK_DT)
+
+
+## Fire-at-will: each loaded platoon shoots on its own jittered clock —
+## the rolling crackle that makes the field's rhythm emergent (docs/02).
+func _update_fire_at_will(c: BattleCompany, dt: float) -> void:
+	var target := nearest_enemy(c)
+	if target == null or absf(target.pos_y - c.pos_y) > BattleCompany.AT_WILL_MAX_RANGE:
+		return
+	for p in BattleCompany.PLATOON_COUNT:
+		if c.platoon_loaded[p]:
+			c.platoon_ready_delay[p] -= dt
+			if c.platoon_ready_delay[p] <= 0.0:
+				_fire_platoon(c, p, target, 0.0, BattleCompany.AT_WILL_DISCIPLINE,
+					MoraleModel.Event.PLATOON_VOLLEY_RECEIVED)
 
 
 func _update_melee() -> void:

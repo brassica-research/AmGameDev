@@ -43,6 +43,15 @@ issues brigade commands in real time.
   their eyes" is literally the mechanic — the longer you hold under
   approaching fire, the more devastating the release, and the more morale
   it costs your own men to stand and take it).
+- **Two fire disciplines, no scripted cadence.** Companies fight as
+  platoons with *independent* reload clocks. *Volley fire*: one
+  commanded crash from every loaded platoon — maximum shock, then
+  seconds of nakedness. *Fire at will*: platoons load and fire on their
+  own jittered rhythm — a rolling crackle of continuous pressure,
+  weaker per shot, smoke piling up fast. Switching between them
+  mid-fight (and reading which the enemy is using by ear) is core play.
+  The field's rhythm is emergent — reload clocks, nerve, and smoke —
+  never an exchange of turns.
 - **The bayonet decides.** Once volleys are spent, charges resolve in
   brutal, short melee. Militia break easily against bayonets (historically
   true and mechanically true); drilled Continentals post–Valley Forge

@@ -27,32 +27,18 @@ func _print_campaign_timeline() -> void:
 	print("  (%d missions loaded)" % CampaignDB.all_missions().size())
 
 
-## Two 40-man companies exchange volleys at closing range until one
-## breaks. Console-only, deterministic (fixed seed): the point is that
-## the sim core runs headless with no scene tree — the property the
-## whole architecture depends on (docs/07-technical-design.md).
+## Run the REAL battle sim headless to a verdict — no scene tree, no
+## rendering, fully deterministic. This is the property the whole
+## architecture depends on (docs/07-technical-design.md), exercised on
+## every boot. The battle's rhythm is emergent: platoon reload clocks,
+## fire-at-will crackle, and jittered AI nerve — never a turn exchange.
 func _run_volley_demo() -> void:
-	print("\n--- Volley model demo: militia line vs regular line ---")
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 17750419  # April 19, 1775
-
-	var militia := Brigade.muster_company("Acton Minute Company", 40, Formation.Drill.MILITIA, rng)
-	var regulars := Brigade.muster_company("His Majesty's 4th Foot", 40, Formation.Drill.REGULAR, rng)
-	var range_yards := 100.0
-
-	while militia.is_fighting() and regulars.is_fighting() and range_yards > 0.0:
-		range_yards -= 20.0
-		var smoke := 0.15 * float(militia.volleys_fired + regulars.volleys_fired)
-		militia.fire_volley(regulars, range_yards, smoke, rng)
-		regulars.fire_volley(militia, range_yards, smoke, rng)
-		print("  @%3d yds | %s: %d up, cohesion %.2f | %s: %d up, cohesion %.2f" % [
-			int(range_yards),
-			militia.display_name, militia.effectives(), militia.cohesion,
-			regulars.display_name, regulars.effectives(), regulars.cohesion,
-		])
-
-	var broken := militia if not militia.is_fighting() else regulars
-	if broken.is_fighting():
-		print("  Bayonet range — melee resolution is M1 work.")
-	else:
-		print("  %s breaks and quits the field." % broken.display_name)
+	print("\n--- Headless auto-battle (deterministic sim core) ---")
+	var sim := BattleSim.create_demo(17750419, true)
+	while not sim.over and sim.tick < 12000:
+		sim.step()
+	for line in sim.battle_log.slice(maxi(0, sim.battle_log.size() - 10)):
+		print("  %s" % line)
+	print("  Verdict after %.0f s of battle: %s" % [
+		float(sim.tick) * SimClock.TICK_DT,
+		"side %d holds the field" % sim.winner_side if sim.winner_side >= 0 else "attrition"])

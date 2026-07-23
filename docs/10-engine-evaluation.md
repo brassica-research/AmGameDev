@@ -114,3 +114,31 @@ settled pillars — which is exactly what the gate structure is for.
 pleasant, HDRP is capable — but it offers neither Godot's workflow fit
 nor Unreal's fidelity ceiling, and its licensing trust wobble in 2023–24
 is the kind of risk neither alternative carries. Not recommended here.*
+
+---
+
+## Addendum: is there an open-source Unreal?
+
+Short answer: **no — nothing open-source currently combines UE-class
+fidelity with UE-class tooling and ecosystem.** The candidates, honestly:
+
+| Engine | License | The pitch | Why it isn't the answer here |
+|---|---|---|---|
+| **O3DE** (Open 3D Engine) | Apache 2.0, Linux Foundation | The closest thing on paper: descended from Amazon Lumberyard (itself CryEngine lineage); modern high-end renderer (Atom), large-world ambitions, AAA DNA | Tooling maturity and editor stability well behind both UE *and* Godot; small community, thin docs and learning material, essentially no asset marketplace; corporate backing has visibly cooled since the 2021 launch. Adopting it trades Unreal's 5%-someday for a much larger risk today |
+| **Stride** | MIT, C# | Solid mid-fidelity .NET engine, genuinely open | Small team/community; fidelity ceiling closer to Godot than Unreal, without Godot's momentum |
+| **CryEngine** | Source-available, royalty | The original fidelity king | *Not* open source — license + 5% royalty; declining ecosystem |
+| **Flax** | Source-available, royalty | "Small Unreal" ergonomics | *Not* open source — 4% royalty over $250k; small community |
+| **Bevy** | MIT/Apache, Rust | Superb data-oriented architecture | No editor; code-first and young — wrong shape for a content-heavy historical game today |
+
+The structural reason: Unreal's edge isn't just renderer code (which
+open source can and does match in places) — it's the *decade of
+integrated tooling* (Sequencer, World Partition, MetaHuman, Fab/
+Megascans) and the army maintaining it. No open project has that
+concentration of sustained investment; the one that comes closest in
+investment terms is, in fact, **Godot** — it simply spends its budget
+on breadth and usability rather than photoreal ceiling.
+
+Practical conclusion, unchanged: Godot is the strongest open-source
+choice and our home through M2. If we outgrow it at the gates, the
+realistic moves are Unreal (accept the terms) or O3DE (accept frontier
+life) — and we would choose with vertical-slice evidence in hand.

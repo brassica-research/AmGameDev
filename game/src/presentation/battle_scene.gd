@@ -7,7 +7,13 @@ extends Node3D
 ## CONTROLS
 ##   1 advance · 2 halt · 3 withdraw
 ##   SPACE (hold) Present … (release) FIRE
+##   F toggle volley fire <-> fire at will
 ##   C fix bayonets & charge · R rally · ENTER restart
+##
+## Demo mode (used by the capture workflow): pass user args after `--`,
+##   --auto            player company is AI-driven (auto-battle)
+##   --start-range=N   opening distance between the lines, in yards
+##   --quit-after=N    quit N seconds in (or ~6 s after the verdict)
 
 const PLAYER_ID := "continentals"
 const FILES := 20          # men per rank in the grey-box line
@@ -16,6 +22,11 @@ const RANK_SPACING := 0.9
 
 var sim: BattleSim
 var clock := SimClock.new()
+
+var _auto := false
+var _quit_after := 0.0
+var _elapsed := 0.0
+var _over_linger := 0.0
 
 var _mm_by_id: Dictionary = {}        # company id -> MultiMeshInstance3D
 var _mat_by_id: Dictionary = {}       # company id -> StandardMaterial3D
@@ -29,7 +40,15 @@ var _log_label: Label
 
 
 func _ready() -> void:
-	sim = BattleSim.create_demo(17750419, false)
+	var args := _parse_user_args()
+	_auto = args.has("auto")
+	_quit_after = float(String(args.get("quit-after", "0")))
+	sim = BattleSim.create_demo(17750419, _auto)
+	var start_range := float(String(args.get("start-range", "240")))
+	if start_range != 240.0:
+		for c in sim.companies:
+			c.pos_y = (-start_range if c.side == 0 else start_range) / 2.0
+			c.prev_pos_y = c.pos_y
 	_build_environment()
 	_build_field()
 	_build_company_visual("continentals", Color(0.16, 0.24, 0.52))
@@ -50,6 +69,26 @@ func _process(delta: float) -> void:
 	_update_smoke()
 	_update_camera()
 	_update_hud()
+	if _quit_after > 0.0:
+		_elapsed += delta
+		if sim.over:
+			_over_linger += delta
+		if _elapsed >= _quit_after or _over_linger > 6.0:
+			get_tree().quit()
+
+
+func _parse_user_args() -> Dictionary:
+	var out := {}
+	for a in OS.get_cmdline_user_args():
+		if not a.begins_with("--"):
+			continue
+		var body := a.substr(2)
+		if body.contains("="):
+			var kv := body.split("=", true, 1)
+			out[kv[0]] = kv[1]
+		else:
+			out[body] = "true"
+	return out
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -66,6 +105,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_SPACE: _order("present")
 			KEY_C: _order("charge")
 			KEY_R: _order("rally")
+			KEY_F:
+				var pc := sim.get_company(PLAYER_ID)
+				if pc != null and pc.fire_mode == BattleCompany.FireMode.VOLLEY:
+					_order("fire_at_will")
+				else:
+					_order("volley_fire")
 			KEY_ENTER: get_tree().reload_current_scene()
 	else:
 		if key.keycode == KEY_SPACE:
@@ -222,15 +267,15 @@ func _update_hud() -> void:
 	var foe := sim.nearest_enemy(pc) if pc != null else null
 	var lines: Array[String] = []
 	lines.append("TWILIGHT'S GLEAMING — M1 volley prototype")
-	lines.append("[1] advance  [2] halt  [3] withdraw   [SPACE hold] present -> [release] FIRE   [C] charge  [R] rally  [ENTER] restart")
+	lines.append("[1] advance  [2] halt  [3] withdraw   [SPACE hold] present -> [release] FIRE   [F] volley/at-will  [C] charge  [R] rally  [ENTER] restart")
 	lines.append("")
 	if pc != null:
-		var reload_txt := "loaded" if pc.loaded else "reloading %.0fs" % pc.reload_left
 		var hold_txt := "  hold %.1fs (bonus %.0f%%)" % [pc.present_hold, pc.hold_bonus() * 100.0] \
 			if pc.state == BattleCompany.State.PRESENTING else ""
-		lines.append("%s — %d effectives  cohesion %.0f%%  %s  %s%s" % [
+		lines.append("%s — %d effectives  cohesion %.0f%%  %s  fire: %s  [%s | %s]%s" % [
 			pc.brigade.display_name, pc.effectives(), pc.cohesion() * 100.0,
-			pc.state_name(), reload_txt, hold_txt])
+			pc.state_name(), pc.fire_mode_name(),
+			_platoon_txt(pc, 0), _platoon_txt(pc, 1), hold_txt])
 	if pc != null and foe != null:
 		lines.append("%s — %d effectives  cohesion %.0f%%  %s  range %d yds  smoke %.0f%%" % [
 			foe.brigade.display_name, foe.effectives(), foe.cohesion() * 100.0,
@@ -245,3 +290,9 @@ func _update_hud() -> void:
 	_hud.text = "\n".join(lines)
 	var tail := sim.battle_log.slice(maxi(0, sim.battle_log.size() - 8))
 	_log_label.text = "\n".join(tail)
+
+
+func _platoon_txt(c: BattleCompany, p: int) -> String:
+	if c.platoon_loaded[p]:
+		return "%s loaded" % BattleCompany.PLATOON_NAMES[p]
+	return "%s %.0fs" % [BattleCompany.PLATOON_NAMES[p], c.platoon_reload[p]]

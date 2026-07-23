@@ -50,6 +50,7 @@ Crown regular company, 240 yards apart.
 | `1` / `2` / `3` | Advance / Halt / Withdraw |
 | **hold `SPACE`** | *Present* — the line steadies; the longer you hold, the harder the volley hits |
 | **release `SPACE`** | **Fire** |
+| `F` | Toggle volley fire ↔ fire at will (platoons fire on their own clocks) |
 | `C` | Fix bayonets and charge |
 | `R` | Rally (when your line wavers or breaks) |
 | `ENTER` | Restart |

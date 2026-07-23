@@ -7,6 +7,7 @@ extends RefCounted
 
 enum Event {
 	VOLLEY_RECEIVED,     # the shock of a synchronized volley, beyond raw losses
+	PLATOON_VOLLEY_RECEIVED,  # rolling fire-at-will: steadier drip, less crash
 	CASUALTY,            # per man down, weighted by proximity/veterancy
 	FLANK_TURNED,
 	OFFICER_DOWN,
@@ -17,6 +18,7 @@ enum Event {
 
 const DRAIN := {
 	Event.VOLLEY_RECEIVED: 0.06,
+	Event.PLATOON_VOLLEY_RECEIVED: 0.035,
 	Event.CASUALTY: 0.015,
 	Event.FLANK_TURNED: 0.20,
 	Event.OFFICER_DOWN: 0.12,

@@ -31,7 +31,11 @@ Mission 1.5 (Lexington Green → North Bridge → Battle Road) at target
 quality:
 - Full art style proof (realistic look, smoke, natural light)
 - One authored cutscene ("King Street") through the JSON cutscene system
-- Muster roll v1: named soldiers, permadeath, memorial book
+- ✅ Muster roll v1 (landed early, during M1): named persistent
+  soldiers with towns/ages/traits, permadeath into the memorial book,
+  wound recovery, battle-earned veterancy that drives company drill,
+  campaign save/load with backup, after-action butcher's bill, and a
+  playable battle → camp → battle loop (`src/campaign/roster.gd`)
 - Field Journal codex with real citations end-to-end
 **Exit test:** a stranger plays 30 minutes and can describe the game's
 identity ("realistic Revolution, you fight and command, your men are

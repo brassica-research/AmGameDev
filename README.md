@@ -54,17 +54,28 @@ Crown regular company, 240 yards apart.
 | `C` | Fix bayonets and charge |
 | `R` | Rally (when your line wavers or breaks) |
 | `V` | Toggle cinematic camera (the demo-capture director) |
-| `ENTER` | Restart |
+| `M` | The memorial book — every soldier you have lost, by name |
+| `ENTER` | Campaign: march again after the after-action report. Demos: restart |
 
 The 15–20 second reload is the heart of the game — commit your volley
 badly and the field belongs to the bayonet. The AI plays by the same
 rules through the same command bus.
 
-Scenarios (command-line, after `--`): the default open-field meeting
-engagement, or `--scenario=night_assault` — the Stony Point pattern,
-where you lead a bayonets-only column (your muskets are unloaded by
-order and the fire keys will not save you) against a garrison whose
-sentries are listening for you in the dark.
+**Manual play is the campaign.** Pressing Play fights your persistent
+company — forty named men with home towns, ages, and histories. The sim
+wounds and kills the actual soldiers on your muster roll; the
+after-action screen reads the butcher's bill by name; fourteen days in
+camp let wounds mend (or not) and recruits fill the ranks; veterans'
+drill rises with battles survived, so the company you lose men from is
+mechanically worse tomorrow. Everything persists in
+`user://muster_roll.json` (backed up on every write). There are no
+mid-battle restarts in the campaign: the roll is the roll.
+
+Demo scenarios (command-line, after `--`): `--scenario=field` for the
+ephemeral meeting engagement, or `--scenario=night_assault` — the Stony
+Point pattern, where you lead a bayonets-only column (your muskets are
+unloaded by order and the fire keys will not save you) against a
+garrison whose sentries are listening for you in the dark.
 
 Headless test suite (same one CI runs):
 

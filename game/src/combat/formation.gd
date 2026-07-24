@@ -11,6 +11,8 @@ enum Shape { LINE, COLUMN, SKIRMISH, SQUARE, ROUT }
 ## this (docs/02, docs/03 mission 2.H2).
 enum Drill { MILITIA, DRILLED, REGULAR, VETERAN }
 
+const DRILL_NAMES := ["Militia", "Drilled", "Regular", "Veteran"]
+
 ## Seconds to change formation shape, by drill level. Militia reforming
 ## under fire is where battles are lost.
 const CHANGE_TIME := {

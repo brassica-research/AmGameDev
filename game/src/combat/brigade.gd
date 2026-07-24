@@ -20,6 +20,17 @@ var cohesion: float = 1.0
 var volleys_fired: int = 0
 
 
+## Wrap a persistent roster for battle: the SAME SimSoldier objects, so
+## every casualty the sim inflicts is already on the muster roll when
+## the smoke clears (docs/02: the muster roll is the emotional ledger).
+static func from_roster(roster: Roster) -> Brigade:
+	var b := Brigade.new()
+	b.display_name = roster.company_name
+	b.soldiers = roster.fit_soldiers()
+	b.formation.drill = roster.company_drill()
+	return b
+
+
 static func muster_company(name: String, count: int, drill_level: int,
 		rng: RandomNumberGenerator) -> Brigade:
 	var b := Brigade.new()

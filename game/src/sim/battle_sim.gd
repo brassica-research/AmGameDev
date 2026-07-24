@@ -56,6 +56,26 @@ static func create_demo(seed_value: int, auto_player := false, lanes := 1) -> Ba
 	return sim
 
 
+## Campaign skirmish: the player's PERSISTENT company (the actual
+## roster soldiers, by reference) against a generated opposing force
+## scaled to its strength. Casualties here are forever.
+static func create_campaign_skirmish(seed_value: int, roster: Roster) -> BattleSim:
+	var sim := BattleSim.new()
+	sim.rng.seed = seed_value
+	var player := BattleCompany.new()
+	player.id = "continentals"
+	player.side = 0
+	player.brigade = Brigade.from_roster(roster)
+	player.pos_y = -100.0
+	player.prev_pos_y = -100.0
+	sim.companies.append(player)
+	var count := clampi(roster.fit_count(), 24, 40)
+	sim.companies.append(make_company("crown", 1, "Crown Foraging Escort",
+		count, Formation.Drill.REGULAR, 100.0, sim.rng, 0))
+	sim.ais.append(BattleAI.new("crown"))
+	return sim
+
+
 ## The Stony Point pattern (Jul 16, 1779): light-infantry columns with
 ## muskets UNLOADED by order approach a garrison in the dark. Sentries
 ## detect them at jittered ranges; the alarm wakes the garrison; the

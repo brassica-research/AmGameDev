@@ -20,6 +20,10 @@ func _initialize() -> void:
 	_test_night_assault()
 	_test_full_battle_terminates()
 	_test_determinism()
+	_test_roster_lifecycle()
+	_test_veterancy_and_drill()
+	_test_wound_recovery()
+	_test_roster_persistence_roundtrip()
 	print("")
 	print("%d checks, %d failures" % [checks, failures])
 	quit(1 if failures > 0 else 0)
@@ -202,6 +206,95 @@ func _test_determinism() -> void:
 	check(h1 == h2, "same seed + same commands => identical battle, tick for tick")
 	var h3 := _run_hash_trace(17770103)
 	check(h1 != h3, "different seed => different battle")
+
+
+func _test_roster_lifecycle() -> void:
+	print("\n-- Muster roll: battle casualties flow back by reference")
+	var roster := Roster.muster_new("Test Company", 40, 1775)
+	check(roster.soldiers.size() == 40, "forty men answer the founding muster")
+	var ids := {}
+	var ages_ok := true
+	for s in roster.soldiers:
+		ids[s.id] = true
+		if s.age < 16 or s.age > 45:
+			ages_ok = false
+	check(ids.size() == 40, "every soldier has a unique id")
+	check(ages_ok, "ages fall in the enlistment envelope (16-45)")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var brigade := Brigade.from_roster(roster)
+	check(brigade.effectives() == 40, "the battle brigade borrows the fit men")
+	brigade.take_casualties(10, rng)
+	check(roster.fit_count() == 30, "sim casualties land on the roster itself — same objects")
+	var report := roster.apply_after_action(brigade.soldiers, rng)
+	var killed: Array = report["killed"]
+	var wounded: Array = report["wounded"]
+	check(killed.size() + wounded.size() == 10, "the butcher's bill accounts for every man down")
+	check(roster.memorial.size() == killed.size(), "the dead enter the memorial book")
+	check(roster.soldiers.size() == 40 - killed.size(), "the dead leave the muster roll")
+	var battles_counted := true
+	for s in roster.soldiers:
+		if s.battles != 1:
+			battles_counted = false
+	check(battles_counted, "survivors and wounded alike are credited the battle")
+
+
+func _test_veterancy_and_drill() -> void:
+	print("\n-- Veterancy: losing veterans lowers the line")
+	var roster := Roster.muster_new("Vets & Recruits", 40, 42)
+	for i in roster.soldiers.size():
+		roster.soldiers[i].battles = 9 if i < 20 else 0
+	roster._update_veterancy()
+	check(roster.soldiers[0].drill_level == Formation.Drill.VETERAN,
+		"nine battles makes a veteran")
+	check(roster.soldiers[39].drill_level == Formation.Drill.MILITIA,
+		"a green recruit is still militia")
+	var mixed := roster.company_drill()
+	for i in 20:
+		roster.soldiers[i].status = SimSoldier.Status.DEAD
+	var gutted := roster.company_drill()
+	check(mixed > gutted, "kill the veterans and the company's drill rating falls")
+
+
+func _test_wound_recovery() -> void:
+	print("\n-- Hospital: wounds close or kill, deterministically")
+	var roster := Roster.muster_new("Invalids", 20, 99)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 99
+	for s in roster.soldiers:
+		s.status = SimSoldier.Status.WOUNDED
+		s.recovery_days = 10
+	roster.advance_days(14, rng)
+	var fit := roster.fit_count()
+	var buried := roster.memorial.size()
+	check(fit + buried == 20, "every wounded man either returns or is buried")
+	check(fit > 0, "most wounds heal")
+	check(roster.day == 14, "the campaign calendar advances")
+	var still := Roster.muster_new("Long Cases", 5, 99)
+	for s in still.soldiers:
+		s.status = SimSoldier.Status.WOUNDED
+		s.recovery_days = 100
+	still.advance_days(14, rng)
+	check(still.wounded_count() == 5, "long recoveries stay in hospital")
+
+
+func _test_roster_persistence_roundtrip() -> void:
+	print("\n-- Persistence: the muster roll survives the save file")
+	var roster := Roster.muster_new("Round Trip Company", 40, 1783)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	var brigade := Brigade.from_roster(roster)
+	brigade.take_casualties(8, rng)
+	roster.apply_after_action(brigade.soldiers, rng)
+	roster.advance_days(30, rng)
+	var a := JSON.stringify(roster.to_dict())
+	var b := JSON.stringify(Roster.from_dict(JSON.parse_string(a)).to_dict())
+	check(a == b, "save -> load -> save is byte-identical")
+	var restored := Roster.from_dict(JSON.parse_string(a))
+	check(restored.memorial.size() == roster.memorial.size(),
+		"the memorial book crosses the save intact")
+	check(restored.company_drill() == roster.company_drill(),
+		"drill rating survives the round trip")
 
 
 func _run_hash_trace(seed_value: int) -> Array[int]:

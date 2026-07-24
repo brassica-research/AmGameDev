@@ -9,10 +9,13 @@ extends Node3D
 ##   SPACE (hold) Present … (release) FIRE
 ##   F toggle volley fire <-> fire at will
 ##   C fix bayonets & charge · R rally
-##   V toggle cinematic camera · ENTER restart
+##   V toggle cinematic camera · M memorial book (campaign)
+##   ENTER: campaign — march again after the after-action; demos — restart
 ##
-## Demo mode (used by the capture workflow): pass user args after `--`,
+## Manual play defaults to the CAMPAIGN: your persistent muster roll
+## fights, bleeds, heals, and is saved (docs/02). Scenario args after `--`:
 ##   --auto                    player company is AI-driven (auto-battle)
+##   --scenario=field          the ephemeral demo battle (no persistence)
 ##   --scenario=night_assault  bayonets-only night storm (Stony Point pattern)
 ##   --lanes=2                 two engagement lanes (four companies)
 ##   --start-range=N           opening distance in yards (field scenario only)
@@ -45,6 +48,9 @@ var _over_linger := 0.0
 var _anim_time := 0.0
 
 var _scenario := "field"
+var _campaign := false
+var _report: Dictionary = {}
+var _show_memorial := false
 var _cinematic := false
 var _shot := SHOT_AERIAL
 var _shot_age := 0.0
@@ -68,11 +74,15 @@ var _log_label: Label
 func _ready() -> void:
 	var args := _parse_user_args()
 	_auto = args.has("auto")
-	_scenario = String(args.get("scenario", "field"))
+	_scenario = String(args.get("scenario", "field" if _auto else "campaign"))
 	_lanes = clampi(int(String(args.get("lanes", "1"))), 1, 2)
 	_quit_after = float(String(args.get("quit-after", "0")))
 	_cinematic = _auto
-	if _scenario == "night_assault":
+	if _scenario == "campaign":
+		_campaign = true
+		GameState.ensure_campaign()
+		sim = BattleSim.create_campaign_skirmish(GameState.next_battle_seed(), GameState.roster)
+	elif _scenario == "night_assault":
 		sim = BattleSim.create_night_assault(17790716, _auto, _lanes)  # July 16, 1779
 		_shot_max_age = 5.0  # the dark cuts faster
 	else:
@@ -114,6 +124,8 @@ func _process(delta: float) -> void:
 		_update_camera_cinematic(delta)
 	else:
 		_update_camera_follow()
+	if _campaign and sim.over and _report.is_empty():
+		_report = GameState.finish_battle(sim)  # the bill is paid exactly once
 	_update_hud()
 	if _quit_after > 0.0:
 		_elapsed += delta
@@ -160,7 +172,18 @@ func _unhandled_input(event: InputEvent) -> void:
 				else:
 					_order("volley_fire")
 			KEY_V: _cinematic = not _cinematic
-			KEY_ENTER: get_tree().reload_current_scene()
+			KEY_M:
+				if _campaign:
+					_show_memorial = not _show_memorial
+			KEY_ENTER:
+				if _campaign:
+					# No mid-battle restarts in the campaign: the roll is
+					# the roll. March again only once the bill is paid.
+					if not _report.is_empty():
+						GameState.rest_and_refit(14)
+						get_tree().reload_current_scene()
+				else:
+					get_tree().reload_current_scene()
 	else:
 		if key.keycode == KEY_SPACE:
 			_order("fire")
@@ -517,6 +540,11 @@ func _update_hud() -> void:
 	if sim.night:
 		var alarm := "THE ALARM IS RAISED" if sim.alarm_raised else "silence — the columns are undiscovered"
 		lines.append("BAYONETS ONLY — night storm, Stony Point pattern   |   %s" % alarm)
+	if _campaign and GameState.roster != null:
+		lines.append("CAMPAIGN — day %d, battle %d   |   muster: %d fit, %d wounded, %d in the memorial book   |   [M] memorial" % [
+			GameState.roster.day, GameState.battles_fought + (1 if _report.is_empty() else 0),
+			GameState.roster.fit_count(), GameState.roster.wounded_count(),
+			GameState.roster.memorial.size()])
 	lines.append("")
 	if pc != null:
 		var hold_txt := "  hold %.1fs (bonus %.0f%%)" % [pc.present_hold, pc.hold_bonus() * 100.0] \
@@ -543,6 +571,33 @@ func _update_hud() -> void:
 			0: lines.append(">>> The field is yours. <<<")
 			1: lines.append(">>> Your line has been driven from the field. <<<")
 			_: lines.append(">>> Nightfall — the action ends in attrition. <<<")
+	if not _report.is_empty():
+		lines.append("")
+		lines.append("--- AFTER ACTION: the butcher's bill ---")
+		var killed: Array = _report["killed"]
+		if killed.is_empty():
+			lines.append("Killed: none — every man answers the next roll call.")
+		else:
+			lines.append("Killed (%d):" % killed.size())
+			for i in mini(killed.size(), 10):
+				lines.append("    %s" % killed[i])
+			if killed.size() > 10:
+				lines.append("    ...and %d more" % (killed.size() - 10))
+		var wounded: Array = _report["wounded"]
+		if not wounded.is_empty():
+			lines.append("Wounded (%d): %s" % [wounded.size(), ", ".join(wounded)])
+		lines.append("Company drill: %s   |   %d fit for duty" % [
+			Formation.DRILL_NAMES[int(_report["drill"])], int(_report["fit"])])
+		lines.append("[ENTER] Fourteen days in camp — the wounded mend or don't, recruits fill the ranks — then march again.")
+	if _show_memorial and _campaign and GameState.roster != null:
+		lines.append("")
+		lines.append("=== THE MEMORIAL BOOK — %d names ===" % GameState.roster.memorial.size())
+		var book := GameState.roster.memorial
+		for i in range(maxi(0, book.size() - 15), book.size()):
+			var entry: Dictionary = book[i]
+			lines.append("    %s %s of %s — %s" % [
+				entry.get("given_name", "?"), entry.get("surname", "?"),
+				entry.get("home_town", "?"), entry.get("fate", "?")])
 	_hud.text = "\n".join(lines)
 	var tail := sim.battle_log.slice(maxi(0, sim.battle_log.size() - 8))
 	_log_label.text = "\n".join(tail)

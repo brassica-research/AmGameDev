@@ -205,18 +205,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_M:
 				if _campaign:
 					_show_memorial = not _show_memorial
-			KEY_B:
-				# Open the pay chest: camp with re-enlistment bounties.
-				if _campaign and not _report.is_empty():
-					GameState.rest_and_refit(GameState.CAMP_DAYS, true)
-					get_tree().reload_current_scene()
 			KEY_ENTER:
 				if _campaign:
 					# No mid-battle restarts in the campaign: the roll is
-					# the roll. March again only once the bill is paid.
+					# the roll. To camp only once the bill is paid.
 					if not _report.is_empty():
-						GameState.rest_and_refit(GameState.CAMP_DAYS)
-						get_tree().reload_current_scene()
+						get_tree().change_scene_to_file("res://scenes/camp.tscn")
 				else:
 					get_tree().reload_current_scene()
 	else:
@@ -591,6 +585,8 @@ func _update_hud() -> void:
 				if n_stayed + n_gone > 0:
 					bits.append("terms up: %d re-enlisted (%d bounties paid), %d went home" % [
 						n_stayed, int(er["bounties_paid"]), n_gone])
+			for note in GameState.last_camp_notes:
+				bits.append(note)
 			if not GameState.last_recruits.is_empty():
 				bits.append("%d recruits joined: %s" % [
 					GameState.last_recruits.size(), ", ".join(GameState.last_recruits)])
@@ -643,7 +639,7 @@ func _update_hud() -> void:
 		var expiring_n := int(_report.get("expiring", 0))
 		if expiring_n > 0:
 			lines.append("%d ENLISTMENTS EXPIRE during the coming camp." % expiring_n)
-		lines.append("[ENTER] march again — no bounty offered   |   [B] offer re-enlistment bounties (%d specie a man who stays)" % GameState.BOUNTY_COST)
+		lines.append("[ENTER] To camp — review the muster roll, set the fortnight's orders, then march.")
 	if _show_memorial and _campaign and GameState.roster != null:
 		lines.append("")
 		lines.append("=== THE MEMORIAL BOOK — %d names ===" % GameState.roster.memorial.size())

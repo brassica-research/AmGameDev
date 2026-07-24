@@ -62,6 +62,23 @@ boxes, one light): integrated graphics runs it at 60 fps with headroom.
 The 600-soldier performance bar in `docs/07` targets *future* art, not
 this build.
 
+> **Note:** the project currently *defaults* to the Compatibility
+> (OpenGL) renderer, so it runs everywhere without flags. Forward+
+> becomes the default again at M2 look-dev.
+
+**Troubleshooting: crash at startup with `vkCreateComputePipelines
+failed` / `ERROR: Condition "!pipeline.driver_id" is true`.** This is
+an outdated Vulkan driver (the console will show something like
+`Vulkan 1.0.xx`), common on 2015–2017 laptop GPUs that haven't had a
+driver update. Two remedies, either works:
+
+1. Update your GPU driver (NVIDIA/AMD's current drivers bring Vulkan
+   1.2+ to those same GPUs), or
+2. Run with OpenGL, which sidesteps Vulkan entirely:
+   `godot --rendering-driver opengl3` (editor) — the project itself
+   already defaults to the Compatibility renderer, so once you've
+   pulled a build containing this note, no flags are needed at all.
+
 ### Get the code
 
 ```
@@ -137,8 +154,16 @@ Crown regular company, 240 yards apart.
 | `R` | Rally (when your line wavers or breaks) |
 | `V` | Toggle cinematic camera (the demo-capture director) |
 | `M` | The memorial book — every soldier you have lost, by name |
-| `ENTER` | Campaign: march again after the after-action (no bounty). Demos: restart |
-| `B` | Campaign, at the after-action: camp with re-enlistment bounties — 8 specie a man who stays |
+| `ENTER` | Campaign: to camp after the after-action report. Demos: restart |
+
+**The camp screen.** Between battles you go into camp: page through the
+full muster roll (`UP`/`DOWN`) — every man's drill, battles, wounds,
+term, and traits — then set the company's posture for the fortnight:
+`D` drill the recruits (green men may reach the Drilled standard), `P`
+send foraging parties (+10 specie, at some risk), or `H` rest and heal
+(wounds mend twice as fast). `B` toggles the re-enlistment bounty for
+expiring terms, `M` opens the memorial book, and `ENTER` breaks camp
+and marches.
 
 The 15–20 second reload is the heart of the game — commit your volley
 badly and the field belongs to the bayonet. The AI plays by the same

@@ -14,6 +14,8 @@ const CAMP_DAYS := 14
 const BOUNTY_COST := 8    # specie per man who takes the bounty and stays
 const VICTORY_PAY := 25   # the paymaster is generous when the field is yours
 const DEFEAT_PAY := 5     # and nearly empty-handed when it isn't
+const FORAGE_PAY := 10    # what the parties bring in, fenced and sold
+const REST_HEALING := 2.0 # a resting camp mends wounds twice as fast
 
 var roster: Roster = null
 var battles_fought := 0
@@ -27,6 +29,7 @@ var demo_mode := false
 var last_recruits: Array[String] = []
 var last_camp_days := 0
 var last_expiry_report: Dictionary = {}
+var last_camp_notes: Array[String] = []
 
 ## Economy (docs/02): hard money vs depreciating Continental paper.
 ## Wired into the hub loop in a later milestone; persisted now.
@@ -74,10 +77,31 @@ func finish_battle(sim: BattleSim) -> Dictionary:
 
 ## Camp between engagements: wounds close or kill, recruits fill the
 ## ranks back toward strength — green men beside the veterans.
-## Camp: wounds resolve, terms come due (with or without the bounty),
-## and recruiting parties refill toward fighting strength.
-func rest_and_refit(days: int, offer_bounty := false) -> Array[String]:
-	roster.advance_days(days, campaign_rng)
+## Camp: the company takes a posture for the fortnight ("drill",
+## "forage", "rest", or plain "camp"), wounds resolve, terms come due
+## (with or without the bounty), and recruiting parties refill toward
+## fighting strength.
+func rest_and_refit(days: int, offer_bounty := false, posture := "camp") -> Array[String]:
+	last_camp_notes = []
+	var healing := 1.0
+	match posture:
+		"drill":
+			var promoted := roster.drill_company(campaign_rng)
+			if promoted.is_empty():
+				last_camp_notes.append("a fortnight of drill, but no recruit yet meets the standard")
+			else:
+				last_camp_notes.append("%d men drilled to the standard: %s" % [
+					promoted.size(), ", ".join(promoted)])
+		"forage":
+			specie += FORAGE_PAY
+			var unlucky := roster.forage_mishap(campaign_rng)
+			last_camp_notes.append("foraging parties bring in %d specie" % FORAGE_PAY)
+			if unlucky != "":
+				last_camp_notes.append("%s wounded by a patrol while foraging" % unlucky)
+		"rest":
+			healing = REST_HEALING
+			last_camp_notes.append("the company rests; the hospital empties faster")
+	roster.advance_days(days, campaign_rng, healing)
 	var slots := floori(float(specie) / float(BOUNTY_COST)) if offer_bounty else 0
 	last_expiry_report = roster.process_expirations(campaign_rng, slots)
 	specie -= int(last_expiry_report["bounties_paid"]) * BOUNTY_COST

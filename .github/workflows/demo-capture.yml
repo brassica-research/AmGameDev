@@ -53,12 +53,12 @@ jobs:
         run: |
           xvfb-run -a -s "-screen 0 1280x720x24" \
             ~/godot/Godot_v${GODOT_VERSION}_linux.x86_64 \
-            --path game res://scenes/battle.tscn \
+            --path game res://scenes/cutscene.tscn \
             --rendering-method gl_compatibility --rendering-driver opengl3 \
             --audio-driver Dummy \
             --resolution 1280x720 \
             --fixed-fps 30 --write-movie /tmp/demo.avi \
-            -- --auto --scenario=field --lanes=2 --start-range=130 --quit-after=130
+            -- --cutscene=king_street --quit-after=150
 
       - name: Encode mp4 and stills
         run: |

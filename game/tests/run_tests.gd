@@ -31,6 +31,7 @@ func _initialize() -> void:
 	_test_player_command_sequences()
 	_test_close_combat_scrum()
 	_test_scrum_regroup()
+	_test_king_street_cutscene()
 	_test_campaign_three_battles()
 	print("")
 	print("%d checks, %d failures" % [checks, failures])
@@ -571,6 +572,50 @@ func _test_scrum_regroup() -> void:
 		sim.step()
 		steps += 1
 	check(sim.over, "the battle still reaches a verdict after the regroup")
+
+
+## M2 deliverable: the King Street cutscene plays end-to-end through
+## the JSON system — schema sound, sources cited, codex link resolving,
+## and the CutscenePlayer streaming every cue in order.
+func _test_king_street_cutscene() -> void:
+	print("\n-- King Street: the opening scene, end to end")
+	var file := FileAccess.open("res://data/cutscenes/king_street.json", FileAccess.READ)
+	var data: Dictionary = JSON.parse_string(file.get_as_text())
+	check(not (data.get("sources", []) as Array).is_empty(), "the scene cites its sources")
+	var events: Array = data.get("events", [])
+	var sorted_ok := true
+	var known := ["caption", "codex", "camera", "actor", "audio"]
+	var last_t := -1.0
+	for e in events:
+		if float(e.get("t", 0.0)) < last_t:
+			sorted_ok = false
+		last_t = float(e.get("t", 0.0))
+		check_quiet(known.has(String(e.get("track", ""))), "unknown track: %s" % e)
+		if String(e.get("track", "")) == "caption":
+			check_quiet(String(e.get("text", "")) != "", "caption without text at t=%s" % e.get("t"))
+	check(sorted_ok, "the timeline is ordered")
+	for e in events:
+		if String(e.get("track", "")) == "codex":
+			var entry := String(e.get("entry", ""))
+			var codex_path := "res://data/codex/%s.json" % entry.trim_prefix("codex_")
+			check(FileAccess.file_exists(codex_path), "codex link resolves: %s" % entry)
+	# Drive the player headless: every cue must stream, then finish.
+	var cp := CutscenePlayer.new()
+	var counts := [0, 0, 0, 0, 0]  # captions, codex, camera, actor, done
+	cp.caption_shown.connect(func(_t: String, _a: String) -> void: counts[0] += 1)
+	cp.codex_linked.connect(func(_e: String) -> void: counts[1] += 1)
+	cp.camera_cue.connect(func(_e: Dictionary) -> void: counts[2] += 1)
+	cp.actor_cue.connect(func(_e: Dictionary) -> void: counts[3] += 1)
+	cp.finished.connect(func(_i: String) -> void: counts[4] += 1)
+	cp.play_file("res://data/cutscenes/king_street.json")
+	for i in 320:
+		cp._process(0.5)
+	check(counts[0] >= 12, "the captions stream (%d shown)" % counts[0])
+	check(counts[1] == 1, "the codex entry fires once")
+	check(counts[2] >= 5, "the camera cuts (%d cues)" % counts[2])
+	check(counts[3] >= 6, "the actors move (%d cues)" % counts[3])
+	check(counts[4] == 1, "the scene finishes")
+	cp.free()
 
 
 ## Quiet variant for assertions inside loops — only failures print.

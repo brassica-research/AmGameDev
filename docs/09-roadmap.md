@@ -33,7 +33,11 @@ Tuning knobs live in `volley.gd`, `morale.gd`, `formation.gd`.
 Mission 1.5 (Lexington Green → North Bridge → Battle Road) at target
 quality:
 - Full art style proof (realistic look, smoke, natural light)
-- One authored cutscene ("King Street") through the JSON cutscene system
+- ✅ One authored cutscene ("King Street") through the JSON cutscene
+  system — full trial-testimony script, data-driven grey-box staging
+  (props/groups/snow from the scene JSON), camera/actor/caption cues
+  streaming end-to-end, codex link firing. Final art replaces the
+  boxes at look-dev; the JSON never changes.
 - ✅ Muster roll v1 (landed early, during M1): named persistent
   soldiers with towns/ages/traits, permadeath into the memorial book,
   wound recovery, battle-earned veterancy that drives company drill,

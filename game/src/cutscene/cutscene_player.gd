@@ -16,6 +16,9 @@ extends Node
 
 signal caption_shown(text: String, attribution: String)
 signal codex_linked(entry_id: String)
+signal camera_cue(event: Dictionary)
+signal actor_cue(event: Dictionary)
+signal audio_cue(event: Dictionary)
 signal finished(cutscene_id: String)
 
 var _events: Array = []
@@ -61,8 +64,11 @@ func _dispatch(event: Dictionary) -> void:
 			caption_shown.emit(event.get("text", ""), event.get("attribution", ""))
 		"codex":
 			codex_linked.emit(event.get("entry", ""))
-		"camera", "actor", "audio":
-			# M2 work: camera rigs, actor cue graphs, audio events.
-			pass
+		"camera":
+			camera_cue.emit(event)
+		"actor":
+			actor_cue.emit(event)
+		"audio":
+			audio_cue.emit(event)  # scored at the audio milestone; cues flow now
 		_:
 			push_warning("CutscenePlayer: unknown track in %s: %s" % [_id, event])

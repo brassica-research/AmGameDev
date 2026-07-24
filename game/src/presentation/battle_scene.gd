@@ -59,6 +59,7 @@ var _report: Dictionary = {}
 var _report_linger := 0.0
 var _show_memorial := false
 var _cinematic := false
+var _zoom := 1.0
 var _shot := SHOT_AERIAL
 var _shot_age := 0.0
 var _shot_max_age := SHOT_MAX_AGE
@@ -89,6 +90,7 @@ func _ready() -> void:
 	if _scenario == "campaign":
 		_campaign = true
 		_battles_limit = int(String(args.get("battles", "0")))
+	# (echo wiring happens after sim creation, below)
 		if _auto:
 			GameState.demo_mode = true  # the real muster roll is untouchable
 			if GameState.roster == null:
@@ -109,6 +111,8 @@ func _ready() -> void:
 				var stagger := 3.0 * float(c.lane)
 				c.pos_y = (-half - stagger) if c.side == 0 else (half - stagger * 0.5)
 				c.prev_pos_y = c.pos_y
+	if not _auto:
+		sim.echo_orders_for = PLAYER_ID  # orders answer back (playtest #1)
 	_build_environment()
 	_build_field()
 	for c in sim.companies:
@@ -182,6 +186,11 @@ func _parse_user_args() -> Dictionary:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+		match (event as InputEventMouseButton).button_index:
+			MOUSE_BUTTON_WHEEL_UP: _zoom = clampf(_zoom - 0.1, 0.55, 1.8)
+			MOUSE_BUTTON_WHEEL_DOWN: _zoom = clampf(_zoom + 0.1, 0.55, 1.8)
+		return
 	if event is not InputEventKey:
 		return
 	var key := event as InputEventKey
@@ -189,9 +198,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if key.pressed:
 		match key.keycode:
-			KEY_1: _order("advance")
-			KEY_2: _order("halt")
-			KEY_3: _order("withdraw")
+			KEY_1, KEY_KP_1: _order("advance")
+			KEY_2, KEY_KP_2: _order("halt")
+			KEY_3, KEY_KP_3: _order("withdraw")
 			KEY_SPACE: _order("present")
 			KEY_C: _order("charge")
 			KEY_R: _order("rally")
@@ -468,7 +477,8 @@ func _update_camera_follow() -> void:
 		return
 	var z := _render_z(pc)
 	var lx := _lane_x(pc.lane)
-	_camera.position = _camera.position.lerp(Vector3(lx + 18.0, 24.0, z - 28.0), 0.05)
+	_camera.position = _camera.position.lerp(
+		Vector3(lx + 14.0 * _zoom, 18.0 * _zoom, z - 22.0 * _zoom), 0.12)
 	_camera.look_at(Vector3(lx, 1.0, z + 32.0), Vector3.UP)
 
 
@@ -565,7 +575,7 @@ func _update_hud() -> void:
 	var foe := sim.nearest_enemy(pc) if pc != null else null
 	var lines: Array[String] = []
 	lines.append("LET TYRANTS SHAKE — M1 volley prototype")
-	lines.append("[1] advance  [2] halt  [3] withdraw   [SPACE hold] present -> [release] FIRE   [F] volley/at-will  [C] charge  [R] rally  [V] camera  [ENTER] restart")
+	lines.append("[1] advance  [2] halt  [3] withdraw   [SPACE hold] present -> [release] FIRE   [F] volley/at-will  [C] charge  [R] rally  [V] camera  [wheel] zoom  [ENTER] restart")
 	if sim.night:
 		var alarm := "THE ALARM IS RAISED" if sim.alarm_raised else "silence — the columns are undiscovered"
 		lines.append("BAYONETS ONLY — night storm, Stony Point pattern   |   %s" % alarm)
@@ -598,12 +608,12 @@ func _update_hud() -> void:
 			if pc.state == BattleCompany.State.PRESENTING else ""
 		lines.append("%s — %d effectives  cohesion %.0f%%  %s  fire: %s  [%s | %s]%s" % [
 			pc.brigade.display_name, pc.effectives(), pc.cohesion() * 100.0,
-			pc.state_name(), pc.fire_mode_name(),
+			_state_txt(pc), pc.fire_mode_name(),
 			_platoon_txt(pc, 0), _platoon_txt(pc, 1), hold_txt])
 	if pc != null and foe != null:
 		lines.append("%s — %d effectives  cohesion %.0f%%  %s  range %d yds  smoke %.0f%%" % [
 			foe.brigade.display_name, foe.effectives(), foe.cohesion() * 100.0,
-			foe.state_name(), int(absf(foe.pos_y - pc.pos_y)),
+			_state_txt(foe), int(absf(foe.pos_y - pc.pos_y)),
 			sim.smoke.sample_between(pc.pos_y, foe.pos_y) * 100.0])
 	if _lanes > 1:
 		var extras: Array[String] = []
@@ -653,6 +663,17 @@ func _update_hud() -> void:
 	_hud.text = "\n".join(lines)
 	var tail := sim.battle_log.slice(maxi(0, sim.battle_log.size() - 8))
 	_log_label.text = "\n".join(tail)
+
+
+## The state text a commander actually needs: movement is visible in
+## words, not just in one-yard-per-second box drift (playtest #1).
+func _state_txt(c: BattleCompany) -> String:
+	if c.state == BattleCompany.State.STEADY:
+		match c.move_order:
+			1: return "ADVANCING"
+			-1: return "FALLING BACK"
+			_: return "HALTED"
+	return c.state_name()
 
 
 func _platoon_txt(c: BattleCompany, p: int) -> String:

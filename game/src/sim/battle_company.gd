@@ -9,10 +9,13 @@ extends RefCounted
 enum State { STEADY, PRESENTING, CHARGING, MELEE, BROKEN, FLED, DESTROYED }
 enum FireMode { VOLLEY, AT_WILL }
 
-const ADVANCE_SPEED := 1.1    # yd/s — common step, ~75 paces/min
-const WITHDRAW_SPEED := 0.8   # backward, still facing the enemy
-const CHARGE_SPEED := 2.6
-const ROUT_SPEED := 2.8       # fear is faster than orders
+## Pacing pass #1 (first human playtest, Jul 2026): historical march
+## rates read as frozen on screen. Speeds sit ~40% above drill-manual
+## literalism — the rhythm keeps its shape, the screen keeps moving.
+const ADVANCE_SPEED := 1.6    # yd/s — brisk quick step
+const WITHDRAW_SPEED := 1.2   # backward, still facing the enemy
+const CHARGE_SPEED := 3.2
+const ROUT_SPEED := 3.4       # fear is faster than orders
 const MELEE_RANGE := 2.0
 const CHARGE_FEAR_RANGE := 80.0   # where the incoming-bayonets shock lands
 const MAX_HOLD_SECONDS := 5.0     # Present hold time for full steadiness bonus

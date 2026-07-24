@@ -36,7 +36,7 @@ issues brigade commands in real time.
 ### The black-powder rhythm
 
 - **Muskets are devastating and slow.** A volley at 50 yards shreds a
-  formation; a reload takes 15–20 real seconds (skill-reducible). This is
+  formation; a reload takes 10–20 real seconds by drill level (pacing pass #1 trimmed militia from literal drill-manual times). This is
   the game's fundamental beat — the equivalent of a fighting game's meter.
 - **Volley discipline.** Holding `Present` builds an accuracy/cohesion
   bonus as your line steadies ("don't fire until you see the whites of

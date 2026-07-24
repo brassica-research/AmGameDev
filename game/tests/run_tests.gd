@@ -30,6 +30,7 @@ func _initialize() -> void:
 	_test_camp_postures()
 	_test_player_command_sequences()
 	_test_close_combat_scrum()
+	_test_scrum_regroup()
 	_test_campaign_three_battles()
 	print("")
 	print("%d checks, %d failures" % [checks, failures])
@@ -527,6 +528,41 @@ func _test_close_combat_scrum() -> void:
 	for c in sim.companies:
 		shots += c.scrum_shots
 	check(shots >= 1, "some men pause for one last shot in the press")
+
+
+## Playtest #3 directive: no stagnant victors. When the press breaks
+## up, survivors jog back to their slots man-by-man, and only a
+## re-formed company returns to command.
+func _test_scrum_regroup() -> void:
+	print("\n-- After the press: regroup, man by man")
+	var sim := BattleSim.create_demo(31, true)
+	var winner: BattleCompany = null
+	var was_in_scrum := {}
+	var steps := 0
+	while not sim.over and steps < 12000:
+		sim.step()
+		steps += 1
+		for c in sim.companies:
+			if c.scrum_active:
+				was_in_scrum[c.id] = true
+			elif was_in_scrum.has(c.id) and c.is_active() \
+					and c.state == BattleCompany.State.STEADY and winner == null:
+				winner = c
+		if winner != null:
+			break
+	check(winner != null, "a company survives the press and returns to command")
+	if winner != null:
+		var worst := 0.0
+		for i in winner.brigade.soldiers.size():
+			if winner.brigade.soldiers[i].status != SimSoldier.Status.FIT:
+				continue
+			worst = maxf(worst, absf(winner.man_x[i] - winner.slot_x(i)))
+			worst = maxf(worst, absf(winner.man_y[i] - winner.slot_y(i)))
+		check(worst <= 0.8, "every survivor re-formed on his slot before command resumed (worst %.2f yd)" % worst)
+	while not sim.over and steps < 12000:
+		sim.step()
+		steps += 1
+	check(sim.over, "the battle still reaches a verdict after the regroup")
 
 
 ## Quiet variant for assertions inside loops — only failures print.

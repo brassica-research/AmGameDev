@@ -386,14 +386,23 @@ func _update_company(c: BattleCompany) -> void:
 				# event: both companies dissolve into individual men
 				# (playtest #2 — no more stop-and-tick at contact).
 				if dist <= BattleCompany.SCRUM_RANGE \
-						and target.state != BattleCompany.State.BROKEN \
-						and not target.scrum_active:
-					c.state = BattleCompany.State.MELEE
-					target.state = BattleCompany.State.MELEE
-					c.enter_scrum(target.id, true, rng)
-					target.enter_scrum(c.id, false, rng)
-					_log("%s closes with the bayonet on %s — the lines dissolve into the press!" % [
-						c.brigade.display_name, target.brigade.display_name])
+						and target.state != BattleCompany.State.BROKEN:
+					if not target.scrum_active:
+						c.state = BattleCompany.State.MELEE
+						target.state = BattleCompany.State.MELEE
+						c.enter_scrum(target.id, true, rng)
+						target.enter_scrum(c.id, false, rng)
+						_log("%s closes with the bayonet on %s — the lines dissolve into the press!" % [
+							c.brigade.display_name, target.brigade.display_name])
+					elif target.scrum_foe_id == "":
+						# Caught mid-regroup: the next wave crashes into
+						# men still scattered from the last one.
+						c.state = BattleCompany.State.MELEE
+						c.enter_scrum(target.id, true, rng)
+						target.state = BattleCompany.State.MELEE
+						target.re_engage(c.id, rng)
+						_log("%s crashes into %s before the line can re-form!" % [
+							c.brigade.display_name, target.brigade.display_name])
 		BattleCompany.State.STEADY:
 			if c.move_order != 0:
 				var speed := c.advance_speed if c.move_order > 0 else -BattleCompany.WITHDRAW_SPEED
@@ -439,12 +448,18 @@ func _update_scrum() -> void:
 			continue
 		var foe := get_company(c.scrum_foe_id)
 		if foe == null or not foe.is_active() or not foe.scrum_active:
-			# The press breaks up: the survivor stands on the ground it holds.
-			c.exit_scrum()
-			if c.state == BattleCompany.State.MELEE:
-				c.state = BattleCompany.State.STEADY
-				c.move_order = 0
-				_log("The press breaks up — %s holds the ground." % c.brigade.display_name)
+			if c.scrum_foe_id != "":
+				# The press breaks up: survivors re-form, man by man,
+				# on the ground they now hold (playtest #3 — no
+				# stagnant victors).
+				c.begin_regroup()
+				_log("The press breaks up — %s re-forms on the ground it holds." % c.brigade.display_name)
+			elif c.regrouped():
+				c.exit_scrum()
+				if c.state == BattleCompany.State.MELEE:
+					c.state = BattleCompany.State.STEADY
+					c.move_order = 0
+					_log("%s stands re-formed and ready." % c.brigade.display_name)
 			continue
 		var pressure := foe.fighting_count()
 		if pressure > 0:
@@ -461,12 +476,10 @@ func _update_scrum() -> void:
 
 
 func _update_scrum_men(c: BattleCompany, dt: float) -> void:
-	var foe := get_company(c.scrum_foe_id)
-	if foe == null:
-		return
+	var foe := get_company(c.scrum_foe_id)  # null while regrouping
 	c.man_prev_x = c.man_x.duplicate()
 	c.man_prev_y = c.man_y.duplicate()
-	var foe_y := foe.pos_y
+	var foe_y := foe.pos_y if foe != null else c.pos_y
 	var t := float(tick) * SimClock.TICK_DT
 	var sum_y := 0.0
 	var alive := 0
@@ -501,10 +514,20 @@ func _update_scrum_men(c: BattleCompany, dt: float) -> void:
 				var ph := float((i * 1103515245) % 628) / 100.0
 				c.man_x[i] += cos(t * 3.0 + ph) * 0.9 * dt
 				c.man_y[i] += sin(t * 2.3 + ph) * 0.7 * dt
+			BattleCompany.ManState.REGROUP:
+				var dx := c.slot_x(i) - c.man_x[i]
+				var dy := c.slot_y(i) - c.man_y[i]
+				var d := sqrt(dx * dx + dy * dy)
+				if d > 0.15:
+					var step := minf(c.man_speed[i] * 0.85 * dt, d)
+					c.man_x[i] += dx / d * step
+					c.man_y[i] += dy / d * step
 		sum_y += c.man_y[i]
 		alive += 1
-	if alive > 0:
-		c.pos_y = sum_y / float(alive)  # the company IS wherever its men are
+	# During a live press the company IS wherever its men are; while
+	# regrouping the anchor stays frozen (slots derive from it).
+	if alive > 0 and c.scrum_foe_id != "":
+		c.pos_y = sum_y / float(alive)
 
 
 ## Night detection: sentries spot the silent columns at their own

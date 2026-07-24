@@ -49,9 +49,12 @@ quality:
 - Field Journal codex with real citations end-to-end
 - Sim-level individual movement (playtest directives): ✅ v1 landed as
   the close-combat scrum — inside 25 yds every man surges, fires, or
-  fights at his own pace, sim-side and deterministic. Still open:
+  fights at his own pace, sim-side and deterministic. ✅ v1.1: no
+  stagnant victors — survivors re-form man-by-man on won ground, a
+  fresh charge can catch them mid-re-form, and command (AI doctrine or
+  the player) resumes only once the line is dressed. Still open:
   stragglers on the march, skirmish spread at range, individual rout
-  paths, men genuinely leaving the ranks outside the scrum
+  paths, cover-seeking (needs the terrain system — walls, fences)
 **Exit test:** a stranger plays 30 minutes and can describe the game's
 identity ("realistic Revolution, you fight and command, your men are
 mortal") unprompted.

@@ -722,6 +722,8 @@ func _state_txt(c: BattleCompany) -> String:
 			1: return "ADVANCING"
 			-1: return "FALLING BACK"
 			_: return "HALTED"
+	if c.state == BattleCompany.State.MELEE and c.scrum_active and c.scrum_foe_id == "":
+		return "RE-FORMING"
 	return c.state_name()
 
 

@@ -27,7 +27,7 @@ const SCRUM_RANGE := 25.0
 const SCRUM_FILES := 20           # formation geometry mirrored from presentation
 const SCRUM_FILE_SPACING := 0.75
 const SCRUM_RANK_SPACING := 0.9
-enum ManState { NONE, SURGE, FIRE_PAUSE, FIGHTING }
+enum ManState { NONE, SURGE, FIRE_PAUSE, FIGHTING, REGROUP }
 
 ## The lockstep-breaker (docs/02 "two fire disciplines"): a company
 ## fights as PLATOON_COUNT platoons with INDEPENDENT reload clocks, so
@@ -112,6 +112,48 @@ func enter_scrum(foe_id: String, attacker: bool, rng: RandomNumberGenerator) -> 
 func exit_scrum() -> void:
 	scrum_active = false
 	scrum_foe_id = ""
+
+
+func slot_x(i: int) -> float:
+	return (float(i % SCRUM_FILES) - float(SCRUM_FILES) / 2.0 + 0.5) * SCRUM_FILE_SPACING
+
+
+func slot_y(i: int) -> float:
+	return pos_y - float(floori(float(i) / float(SCRUM_FILES))) * SCRUM_RANK_SPACING * facing()
+
+
+## The press is over but the men are scattered: every survivor jogs
+## back to his slot, individually, on the ground the company now holds.
+func begin_regroup() -> void:
+	scrum_foe_id = ""
+	for i in brigade.soldiers.size():
+		if brigade.soldiers[i].status == SimSoldier.Status.FIT:
+			man_state[i] = ManState.REGROUP
+
+
+## A fresh enemy arrives while the men are still scattered: no neat
+## re-entry — whoever has a loaded musket may snap a shot, the rest
+## turn and meet the steel where they stand.
+func re_engage(foe_id: String, rng: RandomNumberGenerator) -> void:
+	scrum_foe_id = foe_id
+	for i in brigade.soldiers.size():
+		if brigade.soldiers[i].status != SimSoldier.Status.FIT:
+			continue
+		if bayonets_only or man_fired[i] == 1 or rng.randf() < 0.5 + 0.15 * float(drill()):
+			man_state[i] = ManState.SURGE
+			man_timer[i] = rng.randf()
+		else:
+			man_state[i] = ManState.FIRE_PAUSE
+			man_timer[i] = 0.5 + rng.randf() * 2.0
+
+
+func regrouped() -> bool:
+	for i in brigade.soldiers.size():
+		if brigade.soldiers[i].status != SimSoldier.Status.FIT:
+			continue
+		if absf(man_x[i] - slot_x(i)) > 0.7 or absf(man_y[i] - slot_y(i)) > 0.7:
+			return false
+	return true
 
 
 func fighting_count() -> int:

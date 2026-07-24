@@ -149,6 +149,18 @@ func advance_days(days: int, rng: RandomNumberGenerator) -> void:
 				s.recovery_days = 0
 
 
+## Refit toward FIGHTING strength: recruit until `target_fit` men can
+## stand, not merely until the books show a full company — the wounded
+## backlog must not hollow out the line (the campaign-film finding,
+## Jul 2026). The books still cap at `roll_cap`: a company on campaign
+## can only feed, shelter, and doctor so many names at once.
+func refit(target_fit: int, roll_cap: int, rng: RandomNumberGenerator) -> Array[String]:
+	var need := mini(target_fit - fit_count(), roll_cap - soldiers.size())
+	if need <= 0:
+		return []
+	return recruit(need, rng)
+
+
 ## Fresh men from the recruiting party: green, unknown, and about to
 ## stand next to veterans who remember everyone they've replaced.
 func recruit(count: int, rng: RandomNumberGenerator) -> Array[String]:

@@ -20,14 +20,36 @@ var cohesion: float = 1.0
 var volleys_fired: int = 0
 
 
+## A company fields at most this many muskets; men beyond it wait in
+## reserve (recovered wounded can push the roll past the line's width).
+const FIELD_STRENGTH := 40
+
+
 ## Wrap a persistent roster for battle: the SAME SimSoldier objects, so
 ## every casualty the sim inflicts is already on the muster roll when
 ## the smoke clears (docs/02: the muster roll is the emotional ledger).
+## When more men are fit than the line can hold, the most drilled take
+## the field — then battle order re-sorts by id so veterans don't stand
+## first in the casualty queue.
 static func from_roster(roster: Roster) -> Brigade:
 	var b := Brigade.new()
 	b.display_name = roster.company_name
-	b.soldiers = roster.fit_soldiers()
-	b.formation.drill = roster.company_drill()
+	var fit := roster.fit_soldiers()
+	if fit.size() > FIELD_STRENGTH:
+		fit.sort_custom(func(x: SimSoldier, y: SimSoldier) -> bool:
+			if x.drill_level != y.drill_level:
+				return x.drill_level > y.drill_level
+			if x.battles != y.battles:
+				return x.battles > y.battles
+			return x.id < y.id)
+		fit = fit.slice(0, FIELD_STRENGTH)
+		fit.sort_custom(func(x: SimSoldier, y: SimSoldier) -> bool:
+			return x.id < y.id)
+	b.soldiers = fit
+	var total := 0
+	for s in fit:
+		total += s.drill_level
+	b.formation.drill = clampi(int(float(total) / float(maxi(1, fit.size()))), 0, Formation.Drill.VETERAN)
 	return b
 
 

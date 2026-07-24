@@ -24,6 +24,8 @@ func _initialize() -> void:
 	_test_veterancy_and_drill()
 	_test_wound_recovery()
 	_test_roster_persistence_roundtrip()
+	_test_refit_to_fighting_strength()
+	_test_field_strength_cap()
 	_test_campaign_three_battles()
 	print("")
 	print("%d checks, %d failures" % [checks, failures])
@@ -298,6 +300,42 @@ func _test_roster_persistence_roundtrip() -> void:
 		"drill rating survives the round trip")
 
 
+func _test_refit_to_fighting_strength() -> void:
+	print("\n-- Refit: recruit toward the LINE, not the books")
+	var roster := Roster.muster_new("Hollowed Company", 40, 8)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 8
+	for i in 25:
+		roster.soldiers[i].status = SimSoldier.Status.WOUNDED
+		roster.soldiers[i].recovery_days = 30
+	check(roster.fit_count() == 15, "the wounded backlog hollows the line to 15")
+	var recruits := roster.refit(40, 60, rng)
+	check(recruits.size() == 20, "recruiting aims at 40 fit but stops at the 60-name books cap")
+	check(roster.fit_count() == 35 and roster.soldiers.size() == 60,
+		"35 men can now stand; the books are full")
+	check(roster.refit(40, 60, rng).is_empty(), "full books admit no more recruits")
+
+
+func _test_field_strength_cap() -> void:
+	print("\n-- Fielding: at most forty muskets, the most drilled first")
+	var roster := Roster.muster_new("Overfull Company", 55, 21)
+	for i in 10:
+		roster.soldiers[i].battles = 9
+	roster._update_veterancy()
+	var b := Brigade.from_roster(roster)
+	check(b.soldiers.size() == Brigade.FIELD_STRENGTH, "the line fields exactly forty of fifty-five")
+	var vets := 0
+	for s in b.soldiers:
+		if s.drill_level == Formation.Drill.VETERAN:
+			vets += 1
+	check(vets == 10, "every veteran takes the field ahead of recruits")
+	var ordered := true
+	for i in b.soldiers.size() - 1:
+		if b.soldiers[i].id >= b.soldiers[i + 1].id:
+			ordered = false
+	check(ordered, "battle order is neutral — veterans don't head the casualty queue")
+
+
 ## The whole loop the film shows, run headless: three engagements with
 ## ONE persistent roster — casualties accumulate, camp heals or buries,
 ## recruits refill, and every man is accounted for at the end.
@@ -317,9 +355,7 @@ func _test_campaign_three_battles() -> void:
 		roster.apply_after_action(
 			sim.get_company("continentals").brigade.soldiers, rng)
 		roster.advance_days(14, rng)
-		var need := 40 - roster.soldiers.size()
-		if need > 0:
-			recruits_total += roster.recruit(need, rng).size()
+		recruits_total += roster.refit(40, 60, rng).size()
 	check(roster.soldiers.size() + roster.memorial.size() == 40 + recruits_total,
 		"every man who ever mustered is on the roll or in the book — none lost to bookkeeping")
 	check(roster.memorial.size() > 0, "three battles against regulars leave names in the book")

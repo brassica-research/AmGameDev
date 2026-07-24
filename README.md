@@ -67,9 +67,12 @@ rules through the same command bus.
 company — forty named men with home towns, ages, and histories. The sim
 wounds and kills the actual soldiers on your muster roll; the
 after-action screen reads the butcher's bill by name; fourteen days in
-camp let wounds mend (or not) and recruits fill the ranks; veterans'
-drill rises with battles survived, so the company you lose men from is
-mechanically worse tomorrow. Everything persists in
+camp let wounds mend (or not) while recruiting aims at forty men *fit
+to stand* — though the company's books carry at most sixty names, so a
+deep wounded list still starves the line; veterans' drill rises with
+battles survived, so the company you lose men from is mechanically
+worse tomorrow. When recovered men crowd past forty fit, the most
+drilled take the field and the rest wait in reserve. Everything persists in
 `user://muster_roll.json` (backed up on every write). There are no
 mid-battle restarts in the campaign: the roll is the roll.
 

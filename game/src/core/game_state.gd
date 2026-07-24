@@ -9,6 +9,7 @@ const SAVE_VERSION := 2
 const SAVE_PATH := "user://muster_roll.json"
 const BACKUP_PATH := "user://muster_roll.backup.json"
 const COMPANY_STRENGTH := 40
+const ROLL_CAP := 60  # the books carry at most half again the line
 
 var roster: Roster = null
 var battles_fought := 0
@@ -67,10 +68,7 @@ func finish_battle(sim: BattleSim) -> Dictionary:
 ## ranks back toward strength — green men beside the veterans.
 func rest_and_refit(days: int) -> Array[String]:
 	roster.advance_days(days, campaign_rng)
-	var need := COMPANY_STRENGTH - roster.soldiers.size()
-	var recruits: Array[String] = []
-	if need > 0:
-		recruits = roster.recruit(need, campaign_rng)
+	var recruits := roster.refit(COMPANY_STRENGTH, ROLL_CAP, campaign_rng)
 	last_recruits = recruits
 	last_camp_days = days
 	save()

@@ -1,0 +1,85 @@
+name: Asset Fetch (CC0 packs)
+
+# The dev sandbox has no outbound internet, so CC0 asset packs are
+# fetched HERE, on a runner: parse each pack's public page for its zip,
+# download, keep only the GLB models, write license provenance, and
+# commit to the branch. Never runs on main (same guard as demo-capture).
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore: [main]
+    paths: ["assets/manifest.json"]
+
+permissions:
+  contents: write
+
+concurrency: asset-fetch
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch packs from manifest
+        run: |
+          set -uo pipefail
+          FAILED=0
+          COUNT=$(jq '.packs | length' assets/manifest.json)
+          for i in $(seq 0 $((COUNT - 1))); do
+            NAME=$(jq -r ".packs[$i].name" assets/manifest.json)
+            PAGE=$(jq -r ".packs[$i].source_page" assets/manifest.json)
+            LICENSE=$(jq -r ".packs[$i].license" assets/manifest.json)
+            DEST="game/assets/thirdparty/$NAME"
+            echo "== $NAME <- $PAGE"
+            HTML=$(curl -fsSL --retry 3 -A "Mozilla/5.0 (asset-fetch CI)" "$PAGE") || { echo "!! page fetch failed"; FAILED=1; continue; }
+            ZIP_URL=$(echo "$HTML" | grep -oE 'https?://[^"'"'"' ]+\.zip' | head -1)
+            if [ -z "$ZIP_URL" ]; then
+              # Kenney pages sometimes use relative hrefs — try those too.
+              REL=$(echo "$HTML" | grep -oE 'href="[^"]+\.zip"' | head -1 | sed 's/href="//;s/"//')
+              [ -n "$REL" ] && ZIP_URL="https://kenney.nl$REL"
+            fi
+            if [ -z "$ZIP_URL" ]; then
+              echo "!! no zip link found on page — first 40 lines of HTML for diagnosis:"
+              echo "$HTML" | head -40
+              FAILED=1
+              continue
+            fi
+            echo "   zip: $ZIP_URL"
+            curl -fsSL --retry 3 -A "Mozilla/5.0 (asset-fetch CI)" -o /tmp/pack.zip "$ZIP_URL" || { echo "!! zip download failed"; FAILED=1; continue; }
+            rm -rf /tmp/pack && mkdir -p /tmp/pack
+            unzip -q /tmp/pack.zip -d /tmp/pack || { echo "!! unzip failed"; FAILED=1; continue; }
+            mkdir -p "$DEST"
+            FOUND=$(find /tmp/pack -iname '*.glb' | wc -l)
+            echo "   $FOUND glb models in pack"
+            if [ "$FOUND" = "0" ]; then
+              echo "!! pack contains no GLB — listing structure:"
+              find /tmp/pack -maxdepth 3 -type d | head -20
+              FAILED=1
+              continue
+            fi
+            find /tmp/pack -iname '*.glb' -exec cp {} "$DEST/" \;
+            {
+              echo "Source: $PAGE"
+              echo "Downloaded: $ZIP_URL"
+              echo "License: $LICENSE"
+              echo "Fetched by: asset-fetch workflow, run ${GITHUB_RUN_ID}"
+            } > "$DEST/LICENSE.txt"
+          done
+          exit $FAILED
+
+      - name: Commit fetched assets
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A game/assets/thirdparty/ || true
+          if git diff --cached --quiet; then
+            echo "No new assets to commit."
+          else
+            git commit -m "Fetch CC0 asset packs per assets/manifest.json"
+            git pull --rebase origin "${GITHUB_REF_NAME}" || true
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi

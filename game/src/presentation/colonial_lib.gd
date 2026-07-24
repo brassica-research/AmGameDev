@@ -211,8 +211,57 @@ static func make_building(parent: Node3D, prop_name: String, pos: Vector3,
 
 # --- field dressing -----------------------------------------------------
 
-## A bare winter/early-spring tree: trunk and a few reaching branch boxes.
+const THIRDPARTY_NATURE := "res://assets/thirdparty/nature-kit"
+
+
+## List GLBs in a third-party pack dir whose filename contains `needle`.
+## Returns [] when the pack isn't fetched — callers MUST keep their
+## procedural fallback (assets are dressing, never a dependency).
+static func thirdparty_glbs(dir_path: String, needle: String) -> Array[String]:
+	var out: Array[String] = []
+	var dir := DirAccess.open(dir_path)
+	if dir == null:
+		return out
+	for f in dir.get_files():
+		if f.get_extension() == "glb" and f.to_lower().contains(needle):
+			out.append(dir_path + "/" + f)
+	out.sort()  # deterministic pick order across platforms
+	return out
+
+
+## Instance a GLB prop scaled so its tallest mesh is `target_h` units.
+static func _instance_glb(parent: Node3D, path: String, pos: Vector3,
+		target_h: float, seed_v: int) -> bool:
+	var packed := load(path) as PackedScene
+	if packed == null:
+		return false
+	var node := packed.instantiate() as Node3D
+	if node == null:
+		return false
+	var mesh_node := node.find_children("*", "MeshInstance3D", true, false)
+	var h := 0.0
+	for m in mesh_node:
+		h = maxf(h, (m as MeshInstance3D).get_aabb().size.y * (m as MeshInstance3D).scale.y)
+	if h > 0.001:
+		node.scale = Vector3.ONE * (target_h / h)
+	node.position = Vector3(pos.x, 0.0, pos.z)
+	node.rotation.y = float(_hash(seed_v) % 628) / 100.0
+	parent.add_child(node)
+	return true
+
+
+## A bare winter/early-spring tree: a CC0 model when the nature pack is
+## fetched, else trunk and a few reaching branch boxes.
 static func make_bare_tree(parent: Node3D, pos: Vector3, seed_v: int) -> void:
+	var picks := thirdparty_glbs(THIRDPARTY_NATURE, "tree")
+	if not picks.is_empty():
+		var choice := picks[absi(_hash(seed_v)) % picks.size()]
+		if _instance_glb(parent, choice, pos, 3.6 + float(_hash(seed_v + 3) % 100) / 100.0 * 1.4, seed_v):
+			return
+	_make_procedural_tree(parent, pos, seed_v)
+
+
+static func _make_procedural_tree(parent: Node3D, pos: Vector3, seed_v: int) -> void:
 	var root := Node3D.new()
 	root.position = Vector3(pos.x, 0.0, pos.z)
 	root.rotation.y = float(_hash(seed_v) % 628) / 100.0

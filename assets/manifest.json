@@ -1,0 +1,19 @@
+{
+  "comment": "CC0 third-party asset packs. The asset-fetch workflow downloads each pack on a CI runner (the dev sandbox has no outbound internet), extracts only the GLB models, writes a LICENSE.txt beside them, and commits the result to game/assets/thirdparty/<name>/. Game code must ALWAYS keep a procedural fallback: assets are dressing, never a dependency (docs/11 §6).",
+  "packs": [
+    {
+      "name": "nature-kit",
+      "source_page": "https://kenney.nl/assets/nature-kit",
+      "license": "CC0 1.0 (Kenney, kenney.nl)",
+      "keep_globs": ["*.glb"],
+      "why": "bare trees, rocks, fence pieces, stone-wall segments for New England fields (Battle Road cover set will build on these)"
+    },
+    {
+      "name": "pirate-kit",
+      "source_page": "https://kenney.nl/assets/pirate-kit",
+      "license": "CC0 1.0 (Kenney, kenney.nl)",
+      "keep_globs": ["*.glb"],
+      "why": "barrels, crates, carts, dock pieces — colonial harbor and camp props (Boston wharves, King Street dressing)"
+    }
+  ]
+}

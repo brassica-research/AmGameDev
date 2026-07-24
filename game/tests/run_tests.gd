@@ -660,6 +660,12 @@ func _test_art_form_pass() -> void:
 	var ground: StandardMaterial3D = col_lib.ground_material("snow")
 	check(ground.albedo_texture != null and ground.uv1_triplanar, "snow ground is textured")
 	stage.free()
+	# CC0 shim: with packs unfetched the tree must fall back to procedural,
+	# and with packs fetched it must still build exactly one node.
+	var grove := Node3D.new()
+	col_lib.make_bare_tree(grove, Vector3(5, 0, 5), 42)
+	check(grove.get_child_count() == 1, "bare tree builds with or without third-party packs")
+	grove.free()
 	# The presentation layer still parses — art wiring touched all of it.
 	for path in ["res://src/presentation/battle_scene.gd",
 			"res://src/presentation/cutscene_scene.gd",

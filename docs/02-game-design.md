@@ -52,10 +52,14 @@ issues brigade commands in real time.
   mid-fight (and reading which the enemy is using by ear) is core play.
   The field's rhythm is emergent — reload clocks, nerve, and smoke —
   never an exchange of turns.
-- **The bayonet decides.** Once volleys are spent, charges resolve in
-  brutal, short melee. Militia break easily against bayonets (historically
-  true and mechanically true); drilled Continentals post–Valley Forge
-  hold. Melee is deliberate and weighty — no aerial combos.
+- **The bayonet decides — man by man.** Inside ~25 yards a charge stops
+  being a formation event: every soldier makes his own choice at his own
+  pace. The drilled surge with the steel; the raw pause for one last
+  shot before going in; men lock up blade to blade while others are
+  still running; ranks break and the fight keeps moving. Militia break
+  easily against bayonets (historically true and mechanically true);
+  drilled Continentals post–Valley Forge hold. No aerial combos — the
+  press is chaos, not choreography.
 - **Smoke is a system.** Powder smoke accumulates and drifts with wind,
   blocking line of sight for both AI and player. Sustained fire blinds the
   field; a breeze is tactical information.
@@ -73,6 +77,19 @@ issues brigade commands in real time.
 | **Fix bayonets / Charge** | Morale shock attack; costs cohesion, can rout enemies or your own line if mistimed |
 | **Hold / Advance / Withdraw by ranks** | Positional orders; orderly withdrawal is a drilled skill your brigade must learn |
 | **Rally** | Officer presence restores wavering units — you must physically ride/run to them, exposing yourself (officer casualties were enormous and the game should tempt you into the same risk) |
+
+### Formation looseness is a language (design decision, post-playtest #1)
+
+The game deliberately reads *less* parade-ground than strict period
+drill. Formations are drawn organically — every soldier carries his own
+standing error, wander, and facing — and the **amount of disorder is a
+live signal**: militia stand raggedly where veterans stand tight; a
+line sags and bunches as cohesion drains; ranks stretch on the march,
+surge in a charge, swirl in melee, and dissolve into individual flight
+when the company breaks. Players should be able to read drill and nerve
+at a glance from the shape of a line, before any UI. (Sim-level
+individual movement — stragglers, skirmish spread, men truly leaving
+the ranks — is M2 scope; see the roadmap.)
 
 ### Morale
 

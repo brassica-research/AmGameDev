@@ -334,6 +334,23 @@ func _render_z(c: BattleCompany) -> float:
 	return lerpf(c.prev_pos_y, c.pos_y, clock.alpha())
 
 
+## Organic formations (playtest #1 follow-up): the parade-ground look
+## is dead — looseness is now a SIGNAL. Disorder scales with poor drill
+## and draining cohesion; lines sag toward the center under pressure,
+## stretch on the march, surge in a charge, swirl in melee, and break
+## into individual flight when the company breaks. Presentation-only:
+## a pure function of sim state + time, deterministic, no sim impact.
+func _company_disorder(c: BattleCompany) -> float:
+	var by_drill: float = [1.0, 0.7, 0.5, 0.35][c.drill()]
+	var by_nerve := 1.0 + (1.0 - c.cohesion()) * 2.0
+	var by_state := 1.0
+	match c.state:
+		BattleCompany.State.CHARGING: by_state = 2.2
+		BattleCompany.State.MELEE: by_state = 3.0
+		BattleCompany.State.BROKEN: by_state = 4.5
+	return by_drill * by_nerve * by_state
+
+
 func _update_company_visual(c: BattleCompany) -> void:
 	var mmi: MultiMeshInstance3D = _mm_by_id[c.id]
 	var mm := mmi.multimesh
@@ -344,20 +361,52 @@ func _update_company_visual(c: BattleCompany) -> void:
 		or c.state == BattleCompany.State.CHARGING \
 		or c.state == BattleCompany.State.MELEE \
 		or c.state == BattleCompany.State.BROKEN
+	var disorder := _company_disorder(c)
+	var broken := c.state == BattleCompany.State.BROKEN
 	var hidden := Transform3D(Basis.IDENTITY.scaled(Vector3(0.001, 0.001, 0.001)), Vector3(0, -10, 0))
 	for i in mm.instance_count:
 		if i < alive and c.is_active():
+			var h1 := float((i * 2654435761) % 1000) / 1000.0   # persistent per-man character
+			var h2 := float((i * 1103515245 + 12345) % 1000) / 1000.0
+			# In the scrum the SIM owns every man's position — surging,
+			# pausing to fire, or locked in the press (playtest #2).
+			if c.scrum_active and i < c.man_x.size():
+				var sx := lx + lerpf(c.man_prev_x[i], c.man_x[i], clock.alpha())
+				var sz := lerpf(c.man_prev_y[i], c.man_y[i], clock.alpha())
+				var sbob := sin(_anim_time * 11.0 + float(i) * 1.7) * 0.07
+				mm.set_instance_transform(i, Transform3D(
+					Basis.IDENTITY.rotated(Vector3.UP, (h2 - 0.5) * 1.6),
+					Vector3(sx, 0.85 + sbob, sz)))
+				continue
 			var file := i % FILES
 			var rank := floori(float(i) / float(FILES))
-			var jx := (float((i * 2654435761) % 100) / 100.0 - 0.5) * 0.16
-			var x := lx + (float(file) - float(FILES) / 2.0 + 0.5) * FILE_SPACING + jx
+			# Base slot, plus the man's own standing error, scaled by disorder.
+			var x := lx + (float(file) - float(FILES) / 2.0 + 0.5) * FILE_SPACING
+			x += (h1 - 0.5) * 0.45 * disorder
 			var zz := z - float(rank) * RANK_SPACING * c.facing()
-			var bob := sin(_anim_time * 9.0 + float(i) * 1.7) * (0.05 if moving else 0.015)
-			mm.set_instance_transform(i, Transform3D(Basis.IDENTITY, Vector3(x, 0.85 + bob, zz)))
+			zz += (h2 - 0.5) * 0.5 * disorder
+			# Slow individual wander — nobody stands statue-still.
+			x += sin(_anim_time * (0.7 + h1) + h1 * 12.0) * 0.09 * disorder
+			zz += cos(_anim_time * (0.5 + h2) + h2 * 9.0) * 0.09 * disorder
+			# The line bows toward its center under pressure.
+			zz -= sin(float(file) / float(FILES - 1) * PI) * 0.35 * (disorder - 0.35) * c.facing()
+			# On the march the ranks stretch: every man lags his own amount.
+			if moving and not broken:
+				zz -= h1 * 0.8 * disorder * c.facing() * float(c.move_order != -1)
+			# A broken company is not a formation — it is men, separately.
+			if broken:
+				var ang := h1 * TAU
+				var flight := 2.0 + h2 * 6.0
+				x += cos(ang) * flight
+				zz += sin(ang) * flight * 0.6
+			var bob := sin(_anim_time * 9.0 + float(i) * 1.7) * (0.06 if moving else 0.02)
+			mm.set_instance_transform(i, Transform3D(
+				Basis.IDENTITY.rotated(Vector3.UP, (h2 - 0.5) * 0.5 * disorder),
+				Vector3(x, 0.85 + bob, zz)))
 		else:
 			mm.set_instance_transform(i, hidden)
 	var mat: StandardMaterial3D = _mat_by_id[c.id]
-	var faded := c.state == BattleCompany.State.BROKEN or not c.is_active()
+	var faded := broken or not c.is_active()
 	mat.albedo_color = Color.WHITE.lerp(Color(0.5, 0.5, 0.5), 0.6 if faded else 0.0)
 
 
@@ -673,6 +722,8 @@ func _state_txt(c: BattleCompany) -> String:
 			1: return "ADVANCING"
 			-1: return "FALLING BACK"
 			_: return "HALTED"
+	if c.state == BattleCompany.State.MELEE and c.scrum_active and c.scrum_foe_id == "":
+		return "RE-FORMING"
 	return c.state_name()
 
 

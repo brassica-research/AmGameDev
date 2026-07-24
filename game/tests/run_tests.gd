@@ -29,6 +29,8 @@ func _initialize() -> void:
 	_test_enlistment_expiry()
 	_test_camp_postures()
 	_test_player_command_sequences()
+	_test_close_combat_scrum()
+	_test_scrum_regroup()
 	_test_campaign_three_battles()
 	print("")
 	print("%d checks, %d failures" % [checks, failures])
@@ -486,6 +488,89 @@ func _test_player_command_sequences() -> void:
 	sim.bus.submit(sim.tick + 1, "continentals", "fire")
 	for i in 3: sim.step()
 	check(pc.platoon_shots[0] + pc.platoon_shots[1] == 4, "a second volley follows — SPACE keeps working")
+
+
+## Playtest #2 directive: at contact the fight becomes individual men —
+## no more stop-and-tick. Companies enter the scrum together, men MOVE,
+## some fire their last shot, and the battle still reaches a verdict.
+func _test_close_combat_scrum() -> void:
+	print("\n-- Close-combat scrum: men, not rows")
+	var sim := BattleSim.create_demo(31, true)
+	var pc := sim.get_company("continentals")
+	var foe := sim.get_company("crown")
+	var entered := false
+	var moved := false
+	var steps := 0
+	while not sim.over and steps < 12000:
+		sim.step()
+		steps += 1
+		if pc.scrum_active and not entered:
+			entered = true
+			check(foe.scrum_active, "both companies dissolve into the press together")
+			check(pc.state == BattleCompany.State.MELEE and foe.state == BattleCompany.State.MELEE,
+				"the scrum is the close-combat state")
+			var before := pc.man_y.duplicate()
+			for j in 100:  # five seconds inside the press
+				sim.step()
+			var diffs := 0
+			for k in before.size():
+				if absf(pc.man_y[k] - before[k]) > 0.5:
+					diffs += 1
+			moved = diffs >= 5
+			break
+	check(entered, "a charge inside 25 yards becomes a scrum")
+	check(moved, "men move individually inside the scrum — nobody is frozen in rank")
+	while not sim.over and steps < 12000:
+		sim.step()
+		steps += 1
+	check(sim.over, "the scrum still resolves to a verdict (tick %d)" % sim.tick)
+	var shots := 0
+	for c in sim.companies:
+		shots += c.scrum_shots
+	check(shots >= 1, "some men pause for one last shot in the press")
+
+
+## Playtest #3 directive: no stagnant victors. A controlled press —
+## charge forced, defender's morale shattered by hand so it BREAKS
+## (routs, battle continues) — guaranteeing the regroup window exists:
+## the victor must jog back to his slots and return to command.
+func _test_scrum_regroup() -> void:
+	print("\n-- After the press: regroup, man by man")
+	var sim := BattleSim.new()
+	sim.rng.seed = 77
+	var a := BattleSim.make_company("a", 0, "Attacker Company", 40,
+		Formation.Drill.DRILLED, -30.0, sim.rng)
+	var b := BattleSim.make_company("b", 1, "Defender Company", 40,
+		Formation.Drill.REGULAR, 30.0, sim.rng)
+	sim.companies.append(a)
+	sim.companies.append(b)
+	sim.bus.submit(1, "a", "charge")
+	var steps := 0
+	while not a.scrum_active and steps < 2000:
+		sim.step()
+		steps += 1
+	check(a.scrum_active and b.scrum_active, "the forced charge produces a press")
+	for k in 8:
+		b.brigade.take_morale_event(MoraleModel.Event.FLANK_TURNED)
+	for j in 4:
+		sim.step()
+	check(b.state == BattleCompany.State.BROKEN, "the shattered defender breaks and routs")
+	check(a.cohesion() >= MoraleModel.WAVER_THRESHOLD, "winning the press steadies the victor")
+	for j in 600:  # thirty seconds: the men jog home
+		sim.step()
+	check(not a.scrum_active and a.state == BattleCompany.State.STEADY,
+		"the victor re-forms and returns to command")
+	var worst := 0.0
+	for i in a.brigade.soldiers.size():
+		if a.brigade.soldiers[i].status != SimSoldier.Status.FIT:
+			continue
+		worst = maxf(worst, absf(a.man_x[i] - a.slot_x(i)))
+		worst = maxf(worst, absf(a.man_y[i] - a.slot_y(i)))
+	check(worst <= 0.8, "every survivor re-formed on his slot (worst %.2f yd)" % worst)
+	while not sim.over and steps < 12000:
+		sim.step()
+		steps += 1
+	check(sim.over, "the battle still reaches a verdict after the regroup")
 
 
 ## Quiet variant for assertions inside loops — only failures print.

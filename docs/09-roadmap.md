@@ -22,8 +22,11 @@ Prove it in a grey-box field:
   commands through the same bus as the player)
 - ✅ Headless sim tests (determinism, morale, termination) + GitHub
   Actions CI (`game/tests/`, `.github/workflows/ci.yml`)
-**Exit test (OPEN):** does holding fire while a line walks at you produce
-real dread in playtests? If not, iterate here — nothing else matters yet.
+**Exit test: ✅ PASSED (July 2026).** First human playtest, after
+patch #1 (order echo + pacing pass): *"the volley hold produces real
+tension... a good first pass; refine as we go."* Design directive from
+the same session: reduce formation rigidity — landed as the organic-
+formations pass (disorder as a live signal of drill/cohesion/state).
 Tuning knobs live in `volley.gd`, `morale.gd`, `formation.gd`.
 
 ## M2 — Vertical Slice: "Nineteenth of April"
@@ -44,6 +47,14 @@ quality:
   paged muster-roll review, fortnight postures (drill / forage / rest),
   the bounty decision, and the memorial book, between every battle
 - Field Journal codex with real citations end-to-end
+- Sim-level individual movement (playtest directives): ✅ v1 landed as
+  the close-combat scrum — inside 25 yds every man surges, fires, or
+  fights at his own pace, sim-side and deterministic. ✅ v1.1: no
+  stagnant victors — survivors re-form man-by-man on won ground, a
+  fresh charge can catch them mid-re-form, and command (AI doctrine or
+  the player) resumes only once the line is dressed. Still open:
+  stragglers on the march, skirmish spread at range, individual rout
+  paths, cover-seeking (needs the terrain system — walls, fences)
 **Exit test:** a stranger plays 30 minutes and can describe the game's
 identity ("realistic Revolution, you fight and command, your men are
 mortal") unprompted.

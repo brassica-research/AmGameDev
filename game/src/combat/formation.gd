@@ -24,12 +24,13 @@ const CHANGE_TIME := {
 
 ## Reload time in seconds by drill level (docs/02: the fundamental
 ## rhythm of combat). Historical prime-and-load ran 15–20s for trained
-## troops at 3–4 rounds/minute in ideal drill conditions.
+## troops; pacing pass #1 trimmed ~20% so the rhythm reads as tension
+## rather than dead air — militia still crawl, veterans still sing.
 const RELOAD_TIME := {
-	Drill.MILITIA: 24.0,
-	Drill.DRILLED: 20.0,
-	Drill.REGULAR: 16.0,
-	Drill.VETERAN: 14.0,
+	Drill.MILITIA: 19.0,
+	Drill.DRILLED: 15.0,
+	Drill.REGULAR: 12.5,
+	Drill.VETERAN: 10.5,
 }
 
 var shape: int = Shape.LINE

@@ -53,8 +53,8 @@ economy feels every casualty.
 |---|---|---|
 | OS | Windows 10+, macOS 10.13+, or Linux | 64-bit (x86_64 or ARM64) |
 | RAM | 4 GB (8 GB comfortable) | the editor is the hungry part, not the game |
-| GPU | Anything **Vulkan 1.0**-capable — AMD/NVIDIA from ~2012 on, Intel HD 500-series+ integrated, Apple Silicon or Metal-era Macs (via MoltenVK) | required by the default Forward+ renderer this project uses |
-| GPU fallback | OpenGL 3.3 only? Run with `--rendering-method gl_compatibility --rendering-driver opengl3` | works even under pure software rendering — our CI films the game that way, with no GPU at all |
+| GPU | Anything **OpenGL 3.3**-capable — the project defaults to the Compatibility renderer for the grey-box milestone, so this is nearly any GPU of the last 15 years | works even under pure software rendering — our CI films the game that way, with no GPU at all |
+| GPU (M2 onward) | **Vulkan 1.0+ with a current driver** — AMD/NVIDIA from ~2012 on, Intel HD 500-series+, Apple Silicon/Metal Macs (via MoltenVK) | for the Forward+ renderer when it returns as default at look-dev |
 | Disk | ~150 MB total | editor + project |
 
 The M1 grey-box itself is deliberately trivial to draw (a few hundred
@@ -146,7 +146,8 @@ Crown regular company, 240 yards apart.
 
 | Key | Order |
 |---|---|
-| `1` / `2` / `3` | Advance / Halt / Withdraw |
+| `1` / `2` / `3` (or numpad) | Advance / Halt / Withdraw — the HUD reads ADVANCING / HALTED / FALLING BACK, and every order is echoed (or refused with a reason) in the battle log |
+| mouse wheel | Zoom the command camera |
 | **hold `SPACE`** | *Present* — the line steadies; the longer you hold, the harder the volley hits |
 | **release `SPACE`** | **Fire** |
 | `F` | Toggle volley fire ↔ fire at will (platoons fire on their own clocks) |
@@ -165,7 +166,7 @@ send foraging parties (+10 specie, at some risk), or `H` rest and heal
 expiring terms, `M` opens the memorial book, and `ENTER` breaks camp
 and marches.
 
-The 15–20 second reload is the heart of the game — commit your volley
+The 10–20 second reload (by drill level) is the heart of the game — commit your volley
 badly and the field belongs to the bayonet. The AI plays by the same
 rules through the same command bus.
 

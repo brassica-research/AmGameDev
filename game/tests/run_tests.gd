@@ -28,6 +28,7 @@ func _initialize() -> void:
 	_test_field_strength_cap()
 	_test_enlistment_expiry()
 	_test_camp_postures()
+	_test_player_command_sequences()
 	_test_campaign_three_battles()
 	print("")
 	print("%d checks, %d failures" % [checks, failures])
@@ -434,6 +435,57 @@ func _test_camp_postures() -> void:
 			mishaps += 1
 			check_quiet(f.wounded_count() == 1, "the mishap wounds exactly one forager")
 	check(mishaps > 0 and clean > 0, "foraging risk is real but not certain (%d/30 mishaps)" % mishaps)
+
+
+## Playtest #1 regression: the exact sequences reported as unresponsive,
+## replayed against the sim. Proves the command paths; the presentation
+## fix (order echo, HUD movement text) makes the results visible.
+func _test_player_command_sequences() -> void:
+	print("\n-- Player command sequences (first-playtest report)")
+	var sim := BattleSim.create_demo(9, false)  # crown AI only; player manual
+	var pc := sim.get_company("continentals")
+	# Fire-mode toggle, three times over.
+	sim.bus.submit(sim.tick + 1, "continentals", "fire_at_will")
+	for i in 3: sim.step()
+	check(pc.fire_mode == BattleCompany.FireMode.AT_WILL, "F engages fire-at-will")
+	sim.bus.submit(sim.tick + 1, "continentals", "volley_fire")
+	for i in 3: sim.step()
+	check(pc.fire_mode == BattleCompany.FireMode.VOLLEY, "F toggles BACK to volley fire")
+	sim.bus.submit(sim.tick + 1, "continentals", "fire_at_will")
+	for i in 3: sim.step()
+	check(pc.fire_mode == BattleCompany.FireMode.AT_WILL, "and toggles again — no one-way trap")
+	sim.bus.submit(sim.tick + 1, "continentals", "volley_fire")
+	for i in 3: sim.step()
+	# Advance -> halt -> withdraw.
+	sim.bus.submit(sim.tick + 1, "continentals", "advance")
+	for i in 100: sim.step()
+	var after_advance := pc.pos_y
+	check(after_advance > -120.0, "advance moves the line forward")
+	sim.bus.submit(sim.tick + 1, "continentals", "halt")
+	for i in 3: sim.step()
+	var at_halt := pc.pos_y
+	for i in 100: sim.step()
+	check(pc.pos_y == at_halt, "halt stops the line dead — no drift")
+	sim.bus.submit(sim.tick + 1, "continentals", "withdraw")
+	for i in 100: sim.step()
+	check(pc.pos_y < at_halt, "withdraw moves the line back")
+	sim.bus.submit(sim.tick + 1, "continentals", "halt")
+	for i in 3: sim.step()
+	# Present -> fire -> reload -> present -> fire: the cycle repeats.
+	sim.bus.submit(sim.tick + 1, "continentals", "present")
+	for i in 40: sim.step()
+	sim.bus.submit(sim.tick + 1, "continentals", "fire")
+	for i in 3: sim.step()
+	var first_volley: int = pc.platoon_shots[0] + pc.platoon_shots[1]
+	check(first_volley == 2, "first volley: both platoons discharge")
+	check(not pc.any_loaded(), "muskets empty after the volley")
+	for i in 400: sim.step()  # 20 s — past the longest drilled reload
+	check(pc.all_loaded(), "the company reloads")
+	sim.bus.submit(sim.tick + 1, "continentals", "present")
+	for i in 40: sim.step()
+	sim.bus.submit(sim.tick + 1, "continentals", "fire")
+	for i in 3: sim.step()
+	check(pc.platoon_shots[0] + pc.platoon_shots[1] == 4, "a second volley follows — SPACE keeps working")
 
 
 ## Quiet variant for assertions inside loops — only failures print.

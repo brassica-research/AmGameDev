@@ -20,6 +20,10 @@ var tick := 0
 var over := false
 var winner_side := -1
 var battle_log: Array[String] = []
+## Set to a company id to echo that actor's orders (and WHY an order
+## was refused) into the battle log — playtest finding #1: silent
+## orders feel like dead controls. Empty = no echo (films, tests).
+var echo_orders_for := ""
 var _failsafe_fired := false
 
 ## Night-assault scenario state (docs/03 mission 2.12 "Bayonets Only").
@@ -198,6 +202,11 @@ func _log(text: String) -> void:
 	battle_log.append("[%6.1fs] %s" % [float(tick) * SimClock.TICK_DT, text])
 
 
+func _echo(c: BattleCompany, text: String) -> void:
+	if c.id == echo_orders_for:
+		_log(text)
+
+
 func _apply(cmd: Dictionary) -> void:
 	var c := get_company(String(cmd["actor"]))
 	if c == null or not c.is_active():
@@ -207,21 +216,37 @@ func _apply(cmd: Dictionary) -> void:
 			if c.state == BattleCompany.State.STEADY or c.state == BattleCompany.State.PRESENTING:
 				c.state = BattleCompany.State.STEADY
 				c.move_order = 1
+				_echo(c, "Orders: ADVANCE.")
+			else:
+				_echo(c, "Cannot advance — the company is %s." % c.state_name())
 		"halt":
 			if c.state != BattleCompany.State.BROKEN:
 				c.move_order = 0
+				_echo(c, "Orders: HALT.")
+			else:
+				_echo(c, "No one is listening — the company is broken.")
 		"withdraw":
 			if c.state == BattleCompany.State.STEADY or c.state == BattleCompany.State.PRESENTING:
 				c.state = BattleCompany.State.STEADY
 				c.move_order = -1
+				_echo(c, "Orders: FALL BACK, faces to the enemy.")
+			else:
+				_echo(c, "Cannot withdraw — the company is %s." % c.state_name())
 		"present":
 			if c.state == BattleCompany.State.STEADY and not c.bayonets_only:
 				c.state = BattleCompany.State.PRESENTING
 				c.move_order = 0
 				c.present_hold = 0.0
+				_echo(c, "Orders: PRESENT — hold... hold...")
+			elif c.bayonets_only:
+				_echo(c, "The muskets are unloaded by order — bayonets only.")
+			elif c.state != BattleCompany.State.STEADY:
+				_echo(c, "Cannot present — the company is %s." % c.state_name())
 		"fire":
 			if c.state == BattleCompany.State.PRESENTING and c.any_loaded() and not c.bayonets_only:
 				_fire_volley(c)
+			elif c.state == BattleCompany.State.PRESENTING and not c.any_loaded():
+				_echo(c, "The muskets are EMPTY — %d s to the next loaded platoon." % ceili(minf(c.platoon_reload[0], c.platoon_reload[1])))
 		"fire_at_will":
 			if c.bayonets_only:
 				pass
@@ -385,7 +410,7 @@ func _update_fire_at_will(c: BattleCompany, dt: float) -> void:
 
 ## In the dark, a lost melee collapses faster — confusion multiplies steel.
 func _melee_rate() -> float:
-	return MELEE_CASUALTY_RATE * (1.5 if night else 1.0)
+	return MELEE_CASUALTY_RATE * 1.3 * (1.5 if night else 1.0)  # pacing pass #1
 
 
 func _update_melee() -> void:

@@ -366,10 +366,20 @@ func _update_company_visual(c: BattleCompany) -> void:
 	var hidden := Transform3D(Basis.IDENTITY.scaled(Vector3(0.001, 0.001, 0.001)), Vector3(0, -10, 0))
 	for i in mm.instance_count:
 		if i < alive and c.is_active():
-			var file := i % FILES
-			var rank := floori(float(i) / float(FILES))
 			var h1 := float((i * 2654435761) % 1000) / 1000.0   # persistent per-man character
 			var h2 := float((i * 1103515245 + 12345) % 1000) / 1000.0
+			# In the scrum the SIM owns every man's position — surging,
+			# pausing to fire, or locked in the press (playtest #2).
+			if c.scrum_active and i < c.man_x.size():
+				var sx := lx + lerpf(c.man_prev_x[i], c.man_x[i], clock.alpha())
+				var sz := lerpf(c.man_prev_y[i], c.man_y[i], clock.alpha())
+				var sbob := sin(_anim_time * 11.0 + float(i) * 1.7) * 0.07
+				mm.set_instance_transform(i, Transform3D(
+					Basis.IDENTITY.rotated(Vector3.UP, (h2 - 0.5) * 1.6),
+					Vector3(sx, 0.85 + sbob, sz)))
+				continue
+			var file := i % FILES
+			var rank := floori(float(i) / float(FILES))
 			# Base slot, plus the man's own standing error, scaled by disorder.
 			var x := lx + (float(file) - float(FILES) / 2.0 + 0.5) * FILE_SPACING
 			x += (h1 - 0.5) * 0.45 * disorder

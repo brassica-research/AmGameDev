@@ -52,10 +52,14 @@ issues brigade commands in real time.
   mid-fight (and reading which the enemy is using by ear) is core play.
   The field's rhythm is emergent — reload clocks, nerve, and smoke —
   never an exchange of turns.
-- **The bayonet decides.** Once volleys are spent, charges resolve in
-  brutal, short melee. Militia break easily against bayonets (historically
-  true and mechanically true); drilled Continentals post–Valley Forge
-  hold. Melee is deliberate and weighty — no aerial combos.
+- **The bayonet decides — man by man.** Inside ~25 yards a charge stops
+  being a formation event: every soldier makes his own choice at his own
+  pace. The drilled surge with the steel; the raw pause for one last
+  shot before going in; men lock up blade to blade while others are
+  still running; ranks break and the fight keeps moving. Militia break
+  easily against bayonets (historically true and mechanically true);
+  drilled Continentals post–Valley Forge hold. No aerial combos — the
+  press is chaos, not choreography.
 - **Smoke is a system.** Powder smoke accumulates and drifts with wind,
   blocking line of sight for both AI and player. Sustained fire blinds the
   field; a breeze is tactical information.

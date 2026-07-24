@@ -47,9 +47,11 @@ quality:
   paged muster-roll review, fortnight postures (drill / forage / rest),
   the bounty decision, and the memorial book, between every battle
 - Field Journal codex with real citations end-to-end
-- Sim-level individual movement (playtest #1 directive, deep half):
-  per-soldier positions in the sim — stragglers, skirmish spread,
-  individual rout paths, men genuinely leaving the ranks
+- Sim-level individual movement (playtest directives): ✅ v1 landed as
+  the close-combat scrum — inside 25 yds every man surges, fires, or
+  fights at his own pace, sim-side and deterministic. Still open:
+  stragglers on the march, skirmish spread at range, individual rout
+  paths, men genuinely leaving the ranks outside the scrum
 **Exit test:** a stranger plays 30 minutes and can describe the game's
 identity ("realistic Revolution, you fight and command, your men are
 mortal") unprompted.

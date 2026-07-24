@@ -7,7 +7,6 @@ extends RefCounted
 ## ALL mutations enter through the CommandBus, player and AI alike.
 
 const FIELD_EDGE := 160.0            # routing past this = fled the field
-const MELEE_CASUALTY_RATE := 0.05    # fraction of enemy effectives per second
 const FAILSAFE_CHARGE_TICK := 8000   # force the issue in auto battles
 const HARD_END_TICK := 11000         # attrition verdict — guarantees termination
 
@@ -141,7 +140,7 @@ func step() -> void:
 		c.prev_pos_y = c.pos_y
 	for c in companies:
 		_update_company(c)
-	_update_melee()
+	_update_scrum()
 	smoke.step(SimClock.TICK_DT)
 	_failsafe()
 	_check_end()
@@ -190,6 +189,12 @@ func state_hash() -> int:
 			h = _mix(h, 1 if c.platoon_loaded[p] else 0)
 			h = _mix(h, int(roundf(c.platoon_reload[p] * 20.0)))
 			h = _mix(h, c.platoon_shots[p])
+		if c.scrum_active:
+			h = _mix(h, c.scrum_shots)
+			for i in c.man_x.size():
+				h = _mix(h, int(roundf(c.man_x[i] * 8.0)))
+				h = _mix(h, int(roundf(c.man_y[i] * 8.0)))
+				h = _mix(h, c.man_state[i])
 	h = _mix(h, int(roundf(smoke.total() * 4096.0)))
 	return h
 
@@ -350,6 +355,7 @@ func _update_company(c: BattleCompany) -> void:
 		return
 
 	if c.cohesion() < MoraleModel.BREAK_THRESHOLD:
+		c.exit_scrum()
 		# Night surrender rule: a garrison broken at bayonet point cries
 		# for quarter — and receives it, as at Stony Point (docs/03 2.12).
 		if night and c.is_garrison and c.state == BattleCompany.State.MELEE:
@@ -376,11 +382,17 @@ func _update_company(c: BattleCompany) -> void:
 				if dist <= BattleCompany.CHARGE_FEAR_RANGE and not c.charge_feared:
 					c.charge_feared = true
 					target.brigade.take_morale_event(MoraleModel.Event.BAYONET_CHARGE_INCOMING)
-				if dist <= BattleCompany.MELEE_RANGE:
+				# Inside scrum range the charge stops being a formation
+				# event: both companies dissolve into individual men
+				# (playtest #2 — no more stop-and-tick at contact).
+				if dist <= BattleCompany.SCRUM_RANGE \
+						and target.state != BattleCompany.State.BROKEN \
+						and not target.scrum_active:
 					c.state = BattleCompany.State.MELEE
-					if target.state != BattleCompany.State.BROKEN:
-						target.state = BattleCompany.State.MELEE
-					_log("%s closes with the bayonet on %s." % [
+					target.state = BattleCompany.State.MELEE
+					c.enter_scrum(target.id, true, rng)
+					target.enter_scrum(c.id, false, rng)
+					_log("%s closes with the bayonet on %s — the lines dissolve into the press!" % [
 						c.brigade.display_name, target.brigade.display_name])
 		BattleCompany.State.STEADY:
 			if c.move_order != 0:
@@ -408,31 +420,91 @@ func _update_fire_at_will(c: BattleCompany, dt: float) -> void:
 					MoraleModel.Event.PLATOON_VOLLEY_RECEIVED)
 
 
-## In the dark, a lost melee collapses faster — confusion multiplies steel.
-func _melee_rate() -> float:
-	return MELEE_CASUALTY_RATE * 1.3 * (1.5 if night else 1.0)  # pacing pass #1
+## The close-combat scrum (playtest #2): once a charge goes home, the
+## fight is forty separate men — some surging at their own pace, some
+## pausing for one last shot, some locked blade to blade. Ranks break;
+## the engagement keeps moving.
+const SCRUM_FIGHT_RATE := 0.05      # casualties/sec per enemy man locked in
+const SCRUM_SHOT_HIT := 0.10        # a snapped shot in the press
+const SCRUM_CONTACT_RANGE := 1.5
 
 
-func _update_melee() -> void:
+func _update_scrum() -> void:
 	var dt := SimClock.TICK_DT
-	for a in companies:
-		if a.state != BattleCompany.State.MELEE or not a.is_active():
+	for c in companies:
+		if c.scrum_active and c.is_active():
+			_update_scrum_men(c, dt)
+	for c in companies:
+		if not c.scrum_active or not c.is_active():
 			continue
-		var b := nearest_enemy(a)
-		if b == null or absf(b.pos_y - a.pos_y) > BattleCompany.MELEE_RANGE * 2.0 \
-				or b.state != BattleCompany.State.MELEE:
-			a.state = BattleCompany.State.STEADY
-			a.move_order = 0
+		var foe := get_company(c.scrum_foe_id)
+		if foe == null or not foe.is_active() or not foe.scrum_active:
+			# The press breaks up: the survivor stands on the ground it holds.
+			c.exit_scrum()
+			if c.state == BattleCompany.State.MELEE:
+				c.state = BattleCompany.State.STEADY
+				c.move_order = 0
+				_log("The press breaks up — %s holds the ground." % c.brigade.display_name)
 			continue
-		# b cuts into a this tick; the reverse happens on b's iteration.
-		a.melee_accum += float(b.effectives()) * _melee_rate() * b.bayonet_confidence() * dt
-		if a.melee_accum >= 1.0:
-			var n := int(a.melee_accum)
-			a.melee_accum -= float(n)
-			a.brigade.take_casualties(n, rng)
-			if a.effectives() == 0:
-				a.state = BattleCompany.State.DESTROYED
-				_log("%s is destroyed in the melee." % a.brigade.display_name)
+		var pressure := foe.fighting_count()
+		if pressure > 0:
+			c.melee_accum += float(pressure) * SCRUM_FIGHT_RATE \
+				* foe.bayonet_confidence() * (1.5 if night else 1.0) * dt
+			if c.melee_accum >= 1.0:
+				var n := int(c.melee_accum)
+				c.melee_accum -= float(n)
+				c.brigade.take_casualties(n, rng)
+				if c.effectives() == 0:
+					c.exit_scrum()
+					c.state = BattleCompany.State.DESTROYED
+					_log("%s is destroyed in the press." % c.brigade.display_name)
+
+
+func _update_scrum_men(c: BattleCompany, dt: float) -> void:
+	var foe := get_company(c.scrum_foe_id)
+	if foe == null:
+		return
+	c.man_prev_x = c.man_x.duplicate()
+	c.man_prev_y = c.man_y.duplicate()
+	var foe_y := foe.pos_y
+	var t := float(tick) * SimClock.TICK_DT
+	var sum_y := 0.0
+	var alive := 0
+	for i in c.brigade.soldiers.size():
+		if c.brigade.soldiers[i].status != SimSoldier.Status.FIT:
+			continue
+		match c.man_state[i]:
+			BattleCompany.ManState.SURGE:
+				if c.man_timer[i] > 0.0:
+					c.man_timer[i] -= dt
+				else:
+					var phase := float((i * 2654435761) % 628) / 100.0
+					c.man_y[i] += signf(foe_y - c.man_y[i]) * c.man_speed[i] * dt
+					c.man_x[i] += sin(t * 2.0 + phase) * 0.5 * dt
+					if absf(c.man_y[i] - foe_y) < SCRUM_CONTACT_RANGE:
+						c.man_state[i] = BattleCompany.ManState.FIGHTING
+			BattleCompany.ManState.FIRE_PAUSE:
+				c.man_timer[i] -= dt
+				if c.man_timer[i] <= 0.0 and c.man_fired[i] == 0:
+					c.man_fired[i] = 1
+					c.scrum_shots += 1
+					if rng.randf() < SCRUM_SHOT_HIT * (0.6 if night else 1.0):
+						foe.brigade.take_casualties(1, rng)
+						if foe.effectives() == 0 and foe.state != BattleCompany.State.DESTROYED:
+							foe.exit_scrum()
+							foe.state = BattleCompany.State.DESTROYED
+							_log("%s is destroyed in the press." % foe.brigade.display_name)
+					# Shot away — nothing left but to go in.
+					c.man_state[i] = BattleCompany.ManState.SURGE
+					c.man_timer[i] = 0.2 + rng.randf() * 0.6
+			BattleCompany.ManState.FIGHTING:
+				var ph := float((i * 1103515245) % 628) / 100.0
+				c.man_x[i] += cos(t * 3.0 + ph) * 0.9 * dt
+				c.man_y[i] += sin(t * 2.3 + ph) * 0.7 * dt
+		sum_y += c.man_y[i]
+		alive += 1
+	if alive > 0:
+		c.pos_y = sum_y / float(alive)  # the company IS wherever its men are
 
 
 ## Night detection: sentries spot the silent columns at their own

@@ -62,6 +62,23 @@ boxes, one light): integrated graphics runs it at 60 fps with headroom.
 The 600-soldier performance bar in `docs/07` targets *future* art, not
 this build.
 
+> **Note:** the project currently *defaults* to the Compatibility
+> (OpenGL) renderer, so it runs everywhere without flags. Forward+
+> becomes the default again at M2 look-dev.
+
+**Troubleshooting: crash at startup with `vkCreateComputePipelines
+failed` / `ERROR: Condition "!pipeline.driver_id" is true`.** This is
+an outdated Vulkan driver (the console will show something like
+`Vulkan 1.0.xx`), common on 2015–2017 laptop GPUs that haven't had a
+driver update. Two remedies, either works:
+
+1. Update your GPU driver (NVIDIA/AMD's current drivers bring Vulkan
+   1.2+ to those same GPUs), or
+2. Run with OpenGL, which sidesteps Vulkan entirely:
+   `godot --rendering-driver opengl3` (editor) — the project itself
+   already defaults to the Compatibility renderer, so once you've
+   pulled a build containing this note, no flags are needed at all.
+
 ### Get the code
 
 ```

@@ -27,6 +27,7 @@ func _initialize() -> void:
 	_test_refit_to_fighting_strength()
 	_test_field_strength_cap()
 	_test_enlistment_expiry()
+	_test_camp_postures()
 	_test_campaign_three_battles()
 	print("")
 	print("%d checks, %d failures" % [checks, failures])
@@ -384,6 +385,63 @@ func _test_enlistment_expiry() -> void:
 		"the bounty keeps more men than the speech alone")
 	check(int(report2["bounties_paid"]) == (report2["stayed"] as Array).size(),
 		"bounties are paid only to men who took one and stayed")
+
+
+func _test_camp_postures() -> void:
+	print("\n-- Camp postures: drill, forage, rest")
+	# Drill: green men may reach the standard; nobody else is touched.
+	var roster := Roster.muster_new("Drill Camp", 40, 1778)
+	for i in 5:
+		roster.soldiers[i].battles = 9
+	roster._update_veterancy()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1778
+	var promoted := roster.drill_company(rng)
+	check(promoted.size() > 0, "a fortnight of drill raises some recruits to the standard")
+	var drilled := 0
+	var vets := 0
+	for s in roster.soldiers:
+		if s.drill_level == Formation.Drill.DRILLED:
+			drilled += 1
+		elif s.drill_level == Formation.Drill.VETERAN:
+			vets += 1
+	check(drilled == promoted.size(), "exactly the promoted men carry the new rating")
+	check(vets == 5, "drill does not touch the veterans")
+	# Rest: double healing clears a 20-day wound in a 14-day camp.
+	var resting := Roster.muster_new("Rest Camp", 10, 3)
+	var marching := Roster.muster_new("March Camp", 10, 3)
+	for r in [resting, marching]:
+		for s in r.soldiers:
+			s.status = SimSoldier.Status.WOUNDED
+			s.recovery_days = 20
+	var rng2 := RandomNumberGenerator.new()
+	rng2.seed = 3
+	resting.advance_days(14, rng2, 2.0)
+	marching.advance_days(14, rng2, 1.0)
+	check(resting.wounded_count() == 0, "a resting camp mends 20-day wounds in a fortnight")
+	check(marching.wounded_count() == 10, "an ordinary camp does not")
+	# Forage: sometimes a patrol finds the parties, usually not.
+	var mishaps := 0
+	var clean := 0
+	for seed_value in 30:
+		var f := Roster.muster_new("Foragers", 20, seed_value)
+		var frng := RandomNumberGenerator.new()
+		frng.seed = seed_value
+		var name := f.forage_mishap(frng)
+		if name == "":
+			clean += 1
+		else:
+			mishaps += 1
+			check_quiet(f.wounded_count() == 1, "the mishap wounds exactly one forager")
+	check(mishaps > 0 and clean > 0, "foraging risk is real but not certain (%d/30 mishaps)" % mishaps)
+
+
+## Quiet variant for assertions inside loops — only failures print.
+func check_quiet(cond: bool, label: String) -> void:
+	checks += 1
+	if not cond:
+		failures += 1
+		print("  FAIL  %s" % label)
 
 
 ## The whole loop the film shows, run headless: three engagements with

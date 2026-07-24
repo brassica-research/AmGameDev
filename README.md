@@ -137,8 +137,16 @@ Crown regular company, 240 yards apart.
 | `R` | Rally (when your line wavers or breaks) |
 | `V` | Toggle cinematic camera (the demo-capture director) |
 | `M` | The memorial book — every soldier you have lost, by name |
-| `ENTER` | Campaign: march again after the after-action (no bounty). Demos: restart |
-| `B` | Campaign, at the after-action: camp with re-enlistment bounties — 8 specie a man who stays |
+| `ENTER` | Campaign: to camp after the after-action report. Demos: restart |
+
+**The camp screen.** Between battles you go into camp: page through the
+full muster roll (`UP`/`DOWN`) — every man's drill, battles, wounds,
+term, and traits — then set the company's posture for the fortnight:
+`D` drill the recruits (green men may reach the Drilled standard), `P`
+send foraging parties (+10 specie, at some risk), or `H` rest and heal
+(wounds mend twice as fast). `B` toggles the re-enlistment bounty for
+expiring terms, `M` opens the memorial book, and `ENTER` breaks camp
+and marches.
 
 The 15–20 second reload is the heart of the game — commit your volley
 badly and the field belongs to the bayonet. The AI plays by the same

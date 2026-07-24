@@ -40,6 +40,9 @@ quality:
   fortnight warning, the march-or-bounty choice at after-action,
   specie pay by battle outcome, and the mustered-out ledger — the
   December 1776 crisis as a system (docs/02)
+- ✅ Camp screen v1 (also early): the encampment hub as a real scene —
+  paged muster-roll review, fortnight postures (drill / forage / rest),
+  the bounty decision, and the memorial book, between every battle
 - Field Journal codex with real citations end-to-end
 **Exit test:** a stranger plays 30 minutes and can describe the game's
 identity ("realistic Revolution, you fight and command, your men are

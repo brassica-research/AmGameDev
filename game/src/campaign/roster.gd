@@ -42,6 +42,10 @@ const BASE_STAY_CHANCE := 0.35
 const STAY_PER_DRILL := 0.10
 const STAY_PER_BATTLE := 0.05   # up to four battles' worth
 const BOUNTY_STAY_BONUS := 0.30
+
+## Camp postures (docs/02 hub verbs, v1).
+const DRILL_PROMOTION_CHANCE := 0.4   # a fortnight on the drill field
+const FORAGE_MISHAP_CHANCE := 0.15    # foraging parties meet patrols
 ## Battles survived -> earned drill (docs/02: Green -> Drilled ->
 ## Veteran -> Old Guard track, mapped onto Formation.Drill).
 const VETERANCY_TIERS := [
@@ -147,12 +151,15 @@ func apply_after_action(fought: Array[SimSoldier], rng: RandomNumberGenerator) -
 
 
 ## Camp time: wounds close or kill; the campaign calendar advances.
-func advance_days(days: int, rng: RandomNumberGenerator) -> void:
+## healing_multiplier > 1 models a resting camp: the hospital gets the
+## company's full attention and wounds mend faster than days pass.
+func advance_days(days: int, rng: RandomNumberGenerator, healing_multiplier := 1.0) -> void:
 	day += days
+	var healing := roundi(float(days) * healing_multiplier)
 	for s in soldiers.duplicate():  # _bury() may remove entries
 		if s.status != SimSoldier.Status.WOUNDED:
 			continue
-		s.recovery_days -= days
+		s.recovery_days -= healing
 		if s.recovery_days <= 0:
 			if rng.randf() < DIE_OF_WOUNDS_CHANCE:
 				s.status = SimSoldier.Status.DEAD
@@ -218,6 +225,32 @@ func process_expirations(rng: RandomNumberGenerator, bounty_slots: int) -> Dicti
 			soldiers.erase(s)
 			departed.append(s.display_name())
 	return {"stayed": stayed, "departed": departed, "bounties_paid": bounties_paid}
+
+
+## A fortnight on the drill field: green men (no battles, militia
+## drill) may reach the Drilled standard without powder burnt — the
+## von Steuben program in miniature (docs/02, docs/03 mission 2.H2).
+func drill_company(rng: RandomNumberGenerator) -> Array[String]:
+	var promoted: Array[String] = []
+	for s in soldiers:
+		if s.status == SimSoldier.Status.FIT \
+				and s.drill_level == Formation.Drill.MILITIA \
+				and rng.randf() < DRILL_PROMOTION_CHANCE:
+			s.drill_level = Formation.Drill.DRILLED
+			promoted.append(s.display_name())
+	return promoted
+
+
+## Foraging parties bring in hard money — and sometimes meet a patrol.
+## Returns the unlucky man's name, or "" if the parties come back whole.
+func forage_mishap(rng: RandomNumberGenerator) -> String:
+	if rng.randf() < FORAGE_MISHAP_CHANCE and fit_count() > 0:
+		var fit := fit_soldiers()
+		var s := fit[rng.randi() % fit.size()]
+		s.status = SimSoldier.Status.WOUNDED
+		s.recovery_days = 7 + rng.randi_range(0, 14)
+		return s.display_name()
+	return ""
 
 
 ## Fresh men from the recruiting party: green, unknown, and about to

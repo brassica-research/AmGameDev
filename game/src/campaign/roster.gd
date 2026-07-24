@@ -197,5 +197,11 @@ static func from_dict(d: Dictionary) -> Roster:
 	r._next_id = int(d.get("next_id", 0))
 	for sd in d.get("soldiers", []):
 		r.soldiers.append(SimSoldier.from_dict(sd))
-	r.memorial.assign(d.get("memorial", []))
+	# Canonicalize memorial entries through the soldier serializer:
+	# JSON parsing floats every number, and the book must round-trip
+	# byte-identically (the save/load test holds us to it).
+	for entry in d.get("memorial", []):
+		var nd: Dictionary = SimSoldier.from_dict(entry).to_dict()
+		nd["fate"] = entry.get("fate", "")
+		r.memorial.append(nd)
 	return r

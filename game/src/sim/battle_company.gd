@@ -51,6 +51,9 @@ var advance_speed := ADVANCE_SPEED  # light infantry columns move at the quick s
 ## Scenario flag (Lexington — docs/03 mission 1.5): the captain's standing
 ## order. While true, fire and charge commands are refused, not queued.
 var hold_fire := false
+## Seconds since last taking fire (counts down). A line being shot at
+## does not regain its nerve — recovery is gated on this (capture 15).
+var under_fire_s := 0.0
 var pos_y: float = 0.0
 var prev_pos_y: float = 0.0   # for render interpolation
 var move_order: int = 0       # -1 withdraw, 0 halt, +1 advance

@@ -679,6 +679,11 @@ func _test_art_form_pass() -> void:
 ## standing means the volley.
 func _test_lexington_green() -> void:
 	print("\n-- Lexington Green: the nineteenth of April")
+	# Capture 15 regression: nerve must scale with the butcher's bill.
+	check(MoraleModel.casualty_shock(4, 38, 0) > MoraleModel.casualty_shock(4, 380, 0),
+		"casualty shock is proportional to the company, not flat")
+	check(MoraleModel.casualty_shock(19, 38, 0) > 0.5,
+		"losing half the line shatters a green company's nerve")
 	var sim := BattleSim.create_lexington(19775, true)
 	var militia := sim.get_company("continentals")
 	check(militia != null and militia.hold_fire, "Parker's order stands: hold your fire")
@@ -698,6 +703,9 @@ func _test_lexington_green() -> void:
 	check(sim.winner_side == 1, "history holds: the regulars clear the Green")
 	check(not sim.dispersed, "standing meant the volley")
 	check(militia.effectives() < 38, "and the volley cost men")
+	check(sim.tick < BattleSim.HARD_END_TICK, "decided by arms, not the attrition clock")
+	check(militia.effectives() > 2,
+		"the company BREAKS before it is annihilated (capture 15 regression)")
 	# Deterministic despite the script: same seed, same battle, tick for tick.
 	var a := BattleSim.create_lexington(4444, true)
 	var b := BattleSim.create_lexington(4444, true)

@@ -81,6 +81,7 @@ func is_fighting() -> bool:
 
 
 func take_casualties(count: int, rng: RandomNumberGenerator) -> void:
+	var before := effectives()
 	var down := 0
 	for s in soldiers:
 		if down >= count:
@@ -90,8 +91,9 @@ func take_casualties(count: int, rng: RandomNumberGenerator) -> void:
 			# (docs/02: the hospital system); the demo downs men only.
 			s.status = SimSoldier.Status.WOUNDED if rng.randf() < 0.7 else SimSoldier.Status.DEAD
 			down += 1
-	for i in down:
-		take_morale_event(MoraleModel.Event.CASUALTY)
+	# One proportional shock, not a flat per-man drip (capture 15 finding).
+	cohesion = maxf(0.0, cohesion
+		- MoraleModel.casualty_shock(down, before, formation.drill))
 
 
 func take_morale_event(event: int) -> void:

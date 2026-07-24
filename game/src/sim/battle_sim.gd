@@ -220,6 +220,7 @@ func state_hash() -> int:
 		h = _mix(h, c.state)
 		h = _mix(h, c.fire_mode)
 		h = _mix(h, int(roundf(c.present_hold * 20.0)))
+		h = _mix(h, int(roundf(c.under_fire_s * 20.0)))
 		for p in BattleCompany.PLATOON_COUNT:
 			h = _mix(h, 1 if c.platoon_loaded[p] else 0)
 			h = _mix(h, int(roundf(c.platoon_reload[p] * 20.0)))
@@ -347,6 +348,7 @@ func _fire_platoon(c: BattleCompany, p: int, target: BattleCompany,
 	var hits := VolleyModel.resolve(shooters, dist, smoke_v,
 		c.cohesion(), c.drill(), hold_bonus, rng, disc)
 	target.brigade.take_casualties(hits, rng)
+	target.under_fire_s = maxf(target.under_fire_s, 10.0)  # hit or not, lead is coming in
 	if morale_event >= 0:
 		target.brigade.take_morale_event(morale_event)
 	smoke.deposit(c.pos_y + c.facing() * 3.0, 0.35 * float(shooters) / 40.0)
@@ -367,6 +369,7 @@ func _update_company(c: BattleCompany) -> void:
 	if not c.is_active():
 		return
 	var dt := SimClock.TICK_DT
+	c.under_fire_s = maxf(0.0, c.under_fire_s - dt)
 	if not c.bayonets_only:  # unloaded-by-order muskets stay unloaded
 		for p in BattleCompany.PLATOON_COUNT:
 			if not c.platoon_loaded[p]:
@@ -458,8 +461,12 @@ func _update_company(c: BattleCompany) -> void:
 				_update_fire_at_will(c, dt)
 
 	if c.state == BattleCompany.State.STEADY or c.state == BattleCompany.State.PRESENTING:
+		# A line being shot at does not catch its breath (capture 15:
+		# full-rate recovery let firefights decide nothing — only the
+		# bayonet ever broke anyone).
+		var steadying := 0.15 if c.under_fire_s > 0.0 else 1.0
 		c.brigade.cohesion = minf(1.0, c.cohesion()
-			+ MoraleModel.recovery_rate(true, true, false, c.drill()) * SimClock.TICK_DT)
+			+ MoraleModel.recovery_rate(true, true, false, c.drill()) * steadying * SimClock.TICK_DT)
 
 
 ## Fire-at-will: each loaded platoon shoots on its own jittered clock —

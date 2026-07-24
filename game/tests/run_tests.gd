@@ -624,8 +624,10 @@ func _test_king_street_cutscene() -> void:
 ## still parse (load() returning null = a syntax error CI should catch).
 func _test_art_form_pass() -> void:
 	print("\n-- Art form pass: figures and scenery build headless")
-	var fig_lib := load("res://src/presentation/figure_lib.gd")
-	var col_lib := load("res://src/presentation/colonial_lib.gd")
+	# Loaded at runtime (not preload), so every call on these is dynamic —
+	# keep them Variant and type each result explicitly.
+	var fig_lib: Variant = load("res://src/presentation/figure_lib.gd")
+	var col_lib: Variant = load("res://src/presentation/colonial_lib.gd")
 	check(fig_lib != null, "figure_lib parses")
 	check(col_lib != null, "colonial_lib parses")
 	if fig_lib == null or col_lib == null:
@@ -654,7 +656,7 @@ func _test_art_form_pass() -> void:
 	check(stage.get_child_count() == 1, "the building hangs off the stage")
 	var parts := (stage.get_child(0) as Node3D).get_child_count()
 	check(parts >= 8, "walls, windows, door, roof, chimney (%d parts)" % parts)
-	var ground := col_lib.ground_material("snow")
+	var ground: StandardMaterial3D = col_lib.ground_material("snow")
 	check(ground.albedo_texture != null and ground.uv1_triplanar, "snow ground is textured")
 	stage.free()
 	# The presentation layer still parses — art wiring touched all of it.

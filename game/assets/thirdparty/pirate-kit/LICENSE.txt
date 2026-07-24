@@ -1,0 +1,4 @@
+Source: https://kenney.nl/assets/pirate-kit
+Downloaded: https://kenney.nl/media/pages/assets/pirate-kit/e6d4bb1525-1771333093/kenney_pirate-kit.zip
+License: CC0 1.0 (Kenney, kenney.nl)
+Fetched by: asset-fetch workflow, run 30126917261

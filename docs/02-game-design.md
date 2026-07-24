@@ -74,6 +74,19 @@ issues brigade commands in real time.
 | **Hold / Advance / Withdraw by ranks** | Positional orders; orderly withdrawal is a drilled skill your brigade must learn |
 | **Rally** | Officer presence restores wavering units — you must physically ride/run to them, exposing yourself (officer casualties were enormous and the game should tempt you into the same risk) |
 
+### Formation looseness is a language (design decision, post-playtest #1)
+
+The game deliberately reads *less* parade-ground than strict period
+drill. Formations are drawn organically — every soldier carries his own
+standing error, wander, and facing — and the **amount of disorder is a
+live signal**: militia stand raggedly where veterans stand tight; a
+line sags and bunches as cohesion drains; ranks stretch on the march,
+surge in a charge, swirl in melee, and dissolve into individual flight
+when the company breaks. Players should be able to read drill and nerve
+at a glance from the shape of a line, before any UI. (Sim-level
+individual movement — stragglers, skirmish spread, men truly leaving
+the ranks — is M2 scope; see the roadmap.)
+
 ### Morale
 
 Every unit tracks **cohesion**. Volleys received, casualties, flanks

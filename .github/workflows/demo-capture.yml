@@ -58,8 +58,7 @@ jobs:
             --audio-driver Dummy \
             --resolution 1280x720 \
             --fixed-fps 30 --write-movie /tmp/demo.avi \
-            -- --auto --scenario=campaign --campaign-seed=17750419 \
-            --battles=3 --time-scale=1.5 --quit-after=420
+            -- --auto --scenario=field --lanes=2 --start-range=130 --quit-after=130
 
       - name: Encode mp4 and stills
         run: |

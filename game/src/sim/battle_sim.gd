@@ -355,6 +355,15 @@ func _update_company(c: BattleCompany) -> void:
 		return
 
 	if c.cohesion() < MoraleModel.BREAK_THRESHOLD:
+		# Winning the press is itself a rally: the moment one side
+		# breaks, the other takes heart — a melee produces a standing
+		# victor, not two shattered mobs (caught by the regroup test).
+		if c.scrum_active and c.scrum_foe_id != "":
+			var press_foe := get_company(c.scrum_foe_id)
+			if press_foe != null and press_foe.scrum_active:
+				press_foe.brigade.cohesion = maxf(press_foe.cohesion(),
+					MoraleModel.WAVER_THRESHOLD + 0.15)
+				_log("%s takes heart — the press is won." % press_foe.brigade.display_name)
 		c.exit_scrum()
 		# Night surrender rule: a garrison broken at bayonet point cries
 		# for quarter — and receives it, as at Stony Point (docs/03 2.12).
@@ -451,7 +460,9 @@ func _update_scrum() -> void:
 			if c.scrum_foe_id != "":
 				# The press breaks up: survivors re-form, man by man,
 				# on the ground they now hold (playtest #3 — no
-				# stagnant victors).
+				# stagnant victors). Destruction victories steady the
+				# men the same way a broken foe does.
+				c.brigade.cohesion = maxf(c.cohesion(), MoraleModel.WAVER_THRESHOLD + 0.15)
 				c.begin_regroup()
 				_log("The press breaks up — %s re-forms on the ground it holds." % c.brigade.display_name)
 			elif c.regrouped():

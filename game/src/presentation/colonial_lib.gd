@@ -250,10 +250,23 @@ static func _instance_glb(parent: Node3D, path: String, pos: Vector3,
 	return true
 
 
+## Kenney's nature kit is every biome at once — keep only what grows in
+## Massachusetts (oaks, pines, plain broadleafs), in spring colors.
+const TREE_REJECT := ["palm", "cactus", "blocks", "cone", "plateau", "_fall", "snow"]
+
+
 ## A bare winter/early-spring tree: a CC0 model when the nature pack is
 ## fetched, else trunk and a few reaching branch boxes.
 static func make_bare_tree(parent: Node3D, pos: Vector3, seed_v: int) -> void:
-	var picks := thirdparty_glbs(THIRDPARTY_NATURE, "tree")
+	var picks: Array[String] = []
+	for p in thirdparty_glbs(THIRDPARTY_NATURE, "tree"):
+		var ok := true
+		for bad in TREE_REJECT:
+			if p.to_lower().contains(bad):
+				ok = false
+				break
+		if ok:
+			picks.append(p)
 	if not picks.is_empty():
 		var choice := picks[absi(_hash(seed_v)) % picks.size()]
 		if _instance_glb(parent, choice, pos, 3.6 + float(_hash(seed_v + 3) % 100) / 100.0 * 1.4, seed_v):

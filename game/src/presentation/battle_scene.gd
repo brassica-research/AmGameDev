@@ -651,7 +651,7 @@ func _update_hud() -> void:
 	var pc := sim.get_company(PLAYER_ID)
 	var foe := sim.nearest_enemy(pc) if pc != null else null
 	var lines: Array[String] = []
-	lines.append("LET TYRANTS SHAKE — M1 volley prototype")
+	lines.append("LET TYRANTS SHAKE — M2 vertical slice")
 	lines.append("[1] advance  [2] halt  [3] withdraw   [SPACE hold] present -> [release] FIRE   [F] volley/at-will  [C] charge  [R] rally  [V] camera  [wheel] zoom  [ENTER] restart")
 	if sim.night:
 		var alarm := "THE ALARM IS RAISED" if sim.alarm_raised else "silence — the columns are undiscovered"

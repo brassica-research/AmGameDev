@@ -13,6 +13,8 @@ extends Node3D
 
 const CUTSCENE_DIR := "res://data/cutscenes"
 const SNOW_COUNT := 220
+const FigureLib := preload("res://src/presentation/figure_lib.gd")
+const ColonialLib := preload("res://src/presentation/colonial_lib.gd")
 
 var player: CutscenePlayer
 var _data: Dictionary = {}
@@ -109,6 +111,7 @@ func _build_environment() -> void:
 	_env_light.light_energy = 0.8  # first-quarter moon over snow (docs/05)
 	_env_light.light_color = Color(0.7, 0.78, 0.98)
 	add_child(_env_light)
+	ColonialLib.make_moon(self, _env_light)
 	_camera = Camera3D.new()
 	add_child(_camera)
 	_camera.position = Vector3(-16, 7, -18)
@@ -119,24 +122,17 @@ func _build_stage(stage: Dictionary) -> void:
 	var ground := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(120.0, 120.0)
-	var gmat := StandardMaterial3D.new()
-	gmat.albedo_color = Color(0.34, 0.36, 0.42)  # packed snow over cobbles
-	plane.material = gmat
+	plane.material = ColonialLib.ground_material("snow")
 	ground.mesh = plane
 	add_child(ground)
 	for prop in stage.get("props", []):
-		var mi := MeshInstance3D.new()
-		var box := BoxMesh.new()
 		var size: Array = prop.get("size", [4, 4, 4])
-		box.size = Vector3(size[0], size[1], size[2])
-		var mat := StandardMaterial3D.new()
 		var col: Array = prop.get("color", [0.2, 0.2, 0.2])
-		mat.albedo_color = Color(col[0], col[1], col[2])
-		box.material = mat
-		mi.mesh = box
 		var pos: Array = prop.get("pos", [0, 0, 0])
-		mi.position = Vector3(pos[0], float(size[1]) / 2.0, pos[2])
-		add_child(mi)
+		ColonialLib.make_building(self, String(prop.get("name", "house")),
+			Vector3(pos[0], 0.0, pos[2]),
+			Vector3(size[0], size[1], size[2]),
+			Color(col[0], col[1], col[2]))
 	for g in stage.get("groups", []):
 		_make_group(g)
 	if bool(stage.get("snow", false)):
@@ -146,21 +142,27 @@ func _build_stage(stage: Dictionary) -> void:
 func _make_group(g: Dictionary) -> void:
 	var who := String(g.get("who", "group"))
 	var color: Array = g.get("color", [0.3, 0.3, 0.3])
-	var box := BoxMesh.new()
-	box.size = Vector3(0.45, 1.7, 0.45)
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(color[0], color[1], color[2])
-	box.material = mat
+	var coat := Color(color[0], color[1], color[2])
+	var mesh: ArrayMesh
+	match String(g.get("kind", "civilian")):
+		"soldier":
+			mesh = FigureLib.build_soldier(coat)
+		"militia":
+			mesh = FigureLib.build_militiaman(coat)
+		_:
+			mesh = FigureLib.build_civilian(coat)
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = box
+	mm.mesh = mesh
 	mm.instance_count = 96  # capacity; visible count animates
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
+	mmi.material_override = FigureLib.figure_material()
 	add_child(mmi)
 	var pos: Array = g.get("pos", [0, 0])
 	_groups[who] = {
 		"mmi": mmi,
+		"coat": coat,
 		"pos": Vector2(pos[0], pos[1]),
 		"move_from": Vector2(pos[0], pos[1]),
 		"move_t": 1.0, "move_dur": 1.0,
@@ -250,16 +252,14 @@ func _on_actor(event: Dictionary) -> void:
 				g["move_dur"] = maxf(0.1, float(event.get("duration", 1.0)))
 		"fall":
 			var at: Array = event.get("at", [0, 0])
+			var coat: Color = _groups[who]["coat"] if _groups.has(who) \
+				else Color(0.30, 0.28, 0.26)
 			for k in int(event.get("bodies", 1)):
 				var mi := MeshInstance3D.new()
-				var box := BoxMesh.new()
-				box.size = Vector3(0.45, 0.14, 1.6)
-				var mat := StandardMaterial3D.new()
-				mat.albedo_color = Color(0.30, 0.18, 0.16)
-				box.material = mat
-				mi.mesh = box
+				mi.mesh = FigureLib.build_fallen(coat)
+				mi.material_override = FigureLib.figure_material()
 				var h := (k * 2654435761) % 100
-				mi.position = Vector3(at[0] + float(h % 10) * 0.3 - 1.5, 0.08,
+				mi.position = Vector3(at[0] + float(h % 10) * 0.3 - 1.5, 0.02,
 					at[1] + float(h / 10) * 0.25 - 1.2)
 				mi.rotation.y = float(h) * 0.06
 				_fallen_parent.add_child(mi)
@@ -334,13 +334,18 @@ func _update_groups(delta: float) -> void:
 			if i < visible_count:
 				var h1 := float((i * 2654435761) % 1000) / 1000.0
 				var h2 := float((i * 1103515245 + 12345) % 1000) / 1000.0
+				var h3 := float((i * 805306457 + 2749) % 1000) / 1000.0
 				var x := base.x + (h1 - 0.5) * 2.0 * spread
 				var z := base.y + (h2 - 0.5) * 2.0 * spread
 				x += sin(_anim_time * (0.4 + h1) + h1 * 9.0) * 0.06
 				z += cos(_anim_time * (0.3 + h2) + h2 * 7.0) * 0.06
+				# No two townsmen are the same height or girth.
+				var sy := 0.93 + h3 * 0.13
+				var sw := 0.95 + h1 * 0.10
 				mm.set_instance_transform(i, Transform3D(
-					Basis.IDENTITY.rotated(Vector3.UP, (h2 - 0.5) * 1.2),
-					Vector3(x, 0.85, z)))
+					Basis.IDENTITY.rotated(Vector3.UP, (h2 - 0.5) * 1.2).scaled(
+						Vector3(sw, sy, sw)),
+					Vector3(x, 0.85 * sy, z)))
 			else:
 				mm.set_instance_transform(i, hidden)
 

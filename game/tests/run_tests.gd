@@ -32,6 +32,7 @@ func _initialize() -> void:
 	_test_close_combat_scrum()
 	_test_scrum_regroup()
 	_test_king_street_cutscene()
+	_test_art_form_pass()
 	_test_campaign_three_battles()
 	print("")
 	print("%d checks, %d failures" % [checks, failures])
@@ -616,6 +617,51 @@ func _test_king_street_cutscene() -> void:
 	check(counts[3] >= 6, "the actors move (%d cues)" % counts[3])
 	check(counts[4] == 1, "the scene finishes")
 	cp.free()
+
+
+## M2 art form pass: the procedural figure and scenery builders must
+## produce real geometry headless, and every presentation script must
+## still parse (load() returning null = a syntax error CI should catch).
+func _test_art_form_pass() -> void:
+	print("\n-- Art form pass: figures and scenery build headless")
+	var fig_lib := load("res://src/presentation/figure_lib.gd")
+	var col_lib := load("res://src/presentation/colonial_lib.gd")
+	check(fig_lib != null, "figure_lib parses")
+	check(col_lib != null, "colonial_lib parses")
+	if fig_lib == null or col_lib == null:
+		return
+	for kind in [["soldier", fig_lib.build_soldier(Color(0.55, 0.12, 0.11))],
+			["militiaman", fig_lib.build_militiaman(Color(0.33, 0.26, 0.18))],
+			["civilian", fig_lib.build_civilian(Color(0.30, 0.30, 0.36))],
+			["fallen", fig_lib.build_fallen(Color(0.3, 0.3, 0.3))]]:
+		var mesh: ArrayMesh = kind[1]
+		check(mesh != null and mesh.get_surface_count() == 1, "%s mesh commits" % kind[0])
+		var arrays := mesh.surface_get_arrays(0)
+		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+		check(verts.size() >= 300, "%s has a body (%d verts)" % [kind[0], verts.size()])
+		check(colors.size() == verts.size(), "%s colors are baked per vertex" % kind[0])
+	# A soldier must carry his musket above the hat — the silhouette test.
+	var soldier: ArrayMesh = fig_lib.build_soldier(Color(0.5, 0.1, 0.1))
+	var top := 0.0
+	for v in (soldier.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array):
+		top = maxf(top, v.y)
+	check(top > 1.0, "the musket rises above the ranks (top %.2f)" % top)
+	# A building gets walls, windows, a roof, and at least one chimney.
+	var stage := Node3D.new()
+	col_lib.make_building(stage, "custom_house", Vector3(8, 0, 8),
+		Vector3(12, 8, 9), Color(0.24, 0.23, 0.27))
+	check(stage.get_child_count() == 1, "the building hangs off the stage")
+	var parts := (stage.get_child(0) as Node3D).get_child_count()
+	check(parts >= 8, "walls, windows, door, roof, chimney (%d parts)" % parts)
+	var ground := col_lib.ground_material("snow")
+	check(ground.albedo_texture != null and ground.uv1_triplanar, "snow ground is textured")
+	stage.free()
+	# The presentation layer still parses — art wiring touched all of it.
+	for path in ["res://src/presentation/battle_scene.gd",
+			"res://src/presentation/cutscene_scene.gd",
+			"res://src/presentation/camp_scene.gd"]:
+		check(load(path) != null, "parses: %s" % path)
 
 
 ## Quiet variant for assertions inside loops — only failures print.

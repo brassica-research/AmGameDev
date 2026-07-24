@@ -13,9 +13,9 @@
       {"name": "town_house_far", "pos": [-2, 0, -30], "size": [10, 9, 8], "color": [0.23, 0.22, 0.26]}
     ],
     "groups": [
-      {"who": "sentry", "count": 1, "pos": [4, 2.6], "spread": 0.1, "color": [0.62, 0.17, 0.16]},
-      {"who": "crowd", "count": 0, "pos": [-2, -6], "spread": 4.5, "color": [0.30, 0.30, 0.36]},
-      {"who": "party", "count": 0, "pos": [16, 3], "spread": 0.9, "color": [0.64, 0.18, 0.17]}
+      {"who": "sentry", "kind": "soldier", "count": 1, "pos": [4, 2.6], "spread": 0.1, "color": [0.62, 0.17, 0.16]},
+      {"who": "crowd", "kind": "civilian", "count": 0, "pos": [-2, -6], "spread": 4.5, "color": [0.30, 0.30, 0.36]},
+      {"who": "party", "kind": "soldier", "count": 0, "pos": [16, 3], "spread": 0.9, "color": [0.64, 0.18, 0.17]}
     ]
   },
   "events": [

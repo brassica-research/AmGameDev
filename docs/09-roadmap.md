@@ -33,6 +33,15 @@ Tuning knobs live in `volley.gd`, `morale.gd`, `formation.gd`.
 Mission 1.5 (Lexington Green → North Bridge → Battle Road) at target
 quality:
 - Full art style proof (realistic look, smoke, natural light)
+  - ✅ Form pass (playtest directive: "people and scenery should look
+    like people and scenery"): procedural period figures — tricorn/
+    round hat, coat skirts, crossbelts, shouldered musket, baked vertex
+    colors, one draw call per company — plus colonial buildings (brick/
+    clapboard, candlelit windows, snow-capped roofs, chimneys), textured
+    ground, fences, bare trees, the moon (`src/presentation/figure_lib.gd`,
+    `colonial_lib.gd`). Militia fight in brown coats and round hats;
+    regulars in regimentals — drill is visible at a glance. Final art
+    replaces these meshes at look-dev; call sites keep the contract.
 - ✅ One authored cutscene ("King Street") through the JSON cutscene
   system — full trial-testimony script, data-driven grey-box staging
   (props/groups/snow from the scene JSON), camera/actor/caption cues

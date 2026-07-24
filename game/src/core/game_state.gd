@@ -10,6 +10,10 @@ const SAVE_PATH := "user://muster_roll.json"
 const BACKUP_PATH := "user://muster_roll.backup.json"
 const COMPANY_STRENGTH := 40
 const ROLL_CAP := 60  # the books carry at most half again the line
+const CAMP_DAYS := 14
+const BOUNTY_COST := 8    # specie per man who takes the bounty and stays
+const VICTORY_PAY := 25   # the paymaster is generous when the field is yours
+const DEFEAT_PAY := 5     # and nearly empty-handed when it isn't
 
 var roster: Roster = null
 var battles_fought := 0
@@ -22,6 +26,7 @@ var demo_mode := false
 ## Transient camp news for the HUD (not persisted).
 var last_recruits: Array[String] = []
 var last_camp_days := 0
+var last_expiry_report: Dictionary = {}
 
 ## Economy (docs/02): hard money vs depreciating Continental paper.
 ## Wired into the hub loop in a later milestone; persisted now.
@@ -60,14 +65,22 @@ func finish_battle(sim: BattleSim) -> Dictionary:
 	battles_fought += 1
 	report["battle"] = battles_fought
 	report["victory"] = sim.winner_side == 0
+	specie += VICTORY_PAY if bool(report["victory"]) else DEFEAT_PAY
+	report["specie"] = specie
+	report["expiring"] = roster.expiring_by(roster.day + CAMP_DAYS).size()
 	save()
 	return report
 
 
 ## Camp between engagements: wounds close or kill, recruits fill the
 ## ranks back toward strength — green men beside the veterans.
-func rest_and_refit(days: int) -> Array[String]:
+## Camp: wounds resolve, terms come due (with or without the bounty),
+## and recruiting parties refill toward fighting strength.
+func rest_and_refit(days: int, offer_bounty := false) -> Array[String]:
 	roster.advance_days(days, campaign_rng)
+	var slots := floori(float(specie) / float(BOUNTY_COST)) if offer_bounty else 0
+	last_expiry_report = roster.process_expirations(campaign_rng, slots)
+	specie -= int(last_expiry_report["bounties_paid"]) * BOUNTY_COST
 	var recruits := roster.refit(COMPANY_STRENGTH, ROLL_CAP, campaign_rng)
 	last_recruits = recruits
 	last_camp_days = days

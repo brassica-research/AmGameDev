@@ -149,7 +149,8 @@ func _process(delta: float) -> void:
 			if _battles_limit > 0 and GameState.battles_fought >= _battles_limit:
 				get_tree().quit()
 			else:
-				GameState.rest_and_refit(14)
+				# Films always open the chest — the mechanic on camera.
+				GameState.rest_and_refit(GameState.CAMP_DAYS, true)
 				get_tree().reload_current_scene()
 	_update_hud()
 	if _quit_after > 0.0:
@@ -204,12 +205,17 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_M:
 				if _campaign:
 					_show_memorial = not _show_memorial
+			KEY_B:
+				# Open the pay chest: camp with re-enlistment bounties.
+				if _campaign and not _report.is_empty():
+					GameState.rest_and_refit(GameState.CAMP_DAYS, true)
+					get_tree().reload_current_scene()
 			KEY_ENTER:
 				if _campaign:
 					# No mid-battle restarts in the campaign: the roll is
 					# the roll. March again only once the bill is paid.
 					if not _report.is_empty():
-						GameState.rest_and_refit(14)
+						GameState.rest_and_refit(GameState.CAMP_DAYS)
 						get_tree().reload_current_scene()
 				else:
 					get_tree().reload_current_scene()
@@ -570,14 +576,26 @@ func _update_hud() -> void:
 		var alarm := "THE ALARM IS RAISED" if sim.alarm_raised else "silence — the columns are undiscovered"
 		lines.append("BAYONETS ONLY — night storm, Stony Point pattern   |   %s" % alarm)
 	if _campaign and GameState.roster != null:
-		lines.append("CAMPAIGN — day %d, battle %d   |   muster: %d fit, %d wounded, %d in the memorial book   |   [M] memorial" % [
+		var expiring := GameState.roster.expiring_by(GameState.roster.day + GameState.CAMP_DAYS).size()
+		var expiry_note := "   |   %d terms expire within a fortnight" % expiring if expiring > 0 else ""
+		lines.append("CAMPAIGN — day %d, battle %d   |   muster: %d fit, %d wounded, %d in the memorial book   |   %d specie%s   |   [M] memorial" % [
 			GameState.roster.day, GameState.battles_fought + (1 if _report.is_empty() else 0),
 			GameState.roster.fit_count(), GameState.roster.wounded_count(),
-			GameState.roster.memorial.size()])
-		if _elapsed < 8.0 and not GameState.last_recruits.is_empty():
-			lines.append("IN CAMP %d DAYS — %d recruits joined the company: %s" % [
-				GameState.last_camp_days, GameState.last_recruits.size(),
-				", ".join(GameState.last_recruits)])
+			GameState.roster.memorial.size(), GameState.specie, expiry_note])
+		if _elapsed < 8.0:
+			var bits: Array[String] = []
+			if not GameState.last_expiry_report.is_empty():
+				var er: Dictionary = GameState.last_expiry_report
+				var n_stayed: int = (er["stayed"] as Array).size()
+				var n_gone: int = (er["departed"] as Array).size()
+				if n_stayed + n_gone > 0:
+					bits.append("terms up: %d re-enlisted (%d bounties paid), %d went home" % [
+						n_stayed, int(er["bounties_paid"]), n_gone])
+			if not GameState.last_recruits.is_empty():
+				bits.append("%d recruits joined: %s" % [
+					GameState.last_recruits.size(), ", ".join(GameState.last_recruits)])
+			if not bits.is_empty():
+				lines.append("IN CAMP %d DAYS — %s" % [GameState.last_camp_days, "  |  ".join(bits)])
 	lines.append("")
 	if pc != null:
 		var hold_txt := "  hold %.1fs (bonus %.0f%%)" % [pc.present_hold, pc.hold_bonus() * 100.0] \
@@ -619,9 +637,13 @@ func _update_hud() -> void:
 		var wounded: Array = _report["wounded"]
 		if not wounded.is_empty():
 			lines.append("Wounded (%d): %s" % [wounded.size(), ", ".join(wounded)])
-		lines.append("Company drill: %s   |   %d fit for duty" % [
-			Formation.DRILL_NAMES[int(_report["drill"])], int(_report["fit"])])
-		lines.append("[ENTER] Fourteen days in camp — the wounded mend or don't, recruits fill the ranks — then march again.")
+		lines.append("Company drill: %s   |   %d fit for duty   |   pay chest: %d specie" % [
+			Formation.DRILL_NAMES[int(_report["drill"])], int(_report["fit"]),
+			int(_report.get("specie", 0))])
+		var expiring_n := int(_report.get("expiring", 0))
+		if expiring_n > 0:
+			lines.append("%d ENLISTMENTS EXPIRE during the coming camp." % expiring_n)
+		lines.append("[ENTER] march again — no bounty offered   |   [B] offer re-enlistment bounties (%d specie a man who stays)" % GameState.BOUNTY_COST)
 	if _show_memorial and _campaign and GameState.roster != null:
 		lines.append("")
 		lines.append("=== THE MEMORIAL BOOK — %d names ===" % GameState.roster.memorial.size())
@@ -631,6 +653,7 @@ func _update_hud() -> void:
 			lines.append("    %s %s of %s — %s" % [
 				entry.get("given_name", "?"), entry.get("surname", "?"),
 				entry.get("home_town", "?"), entry.get("fate", "?")])
+		lines.append("Mustered out and gone home: %d" % GameState.roster.mustered_out.size())
 	_hud.text = "\n".join(lines)
 	var tail := sim.battle_log.slice(maxi(0, sim.battle_log.size() - 8))
 	_log_label.text = "\n".join(tail)

@@ -36,6 +36,10 @@ quality:
   wound recovery, battle-earned veterancy that drives company drill,
   campaign save/load with backup, after-action butcher's bill, and a
   playable battle → camp → battle loop (`src/campaign/roster.gd`)
+- ✅ Enlistment expiry v1 (also early): 60–120-day terms, the
+  fortnight warning, the march-or-bounty choice at after-action,
+  specie pay by battle outcome, and the mustered-out ledger — the
+  December 1776 crisis as a system (docs/02)
 - Field Journal codex with real citations end-to-end
 **Exit test:** a stranger plays 30 minutes and can describe the game's
 identity ("realistic Revolution, you fight and command, your men are

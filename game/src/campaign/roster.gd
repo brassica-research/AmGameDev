@@ -31,6 +31,17 @@ const TRAITS := ["marksman", "steady", "mariner", "old soldier",
 
 const TRAIT_CHANCE := 0.22
 const DIE_OF_WOUNDS_CHANCE := 0.12
+
+## Enlistment terms (docs/02 "Enlistments expire" — the December 1776
+## crisis as a system). Men sign for 60–120 days; at camp, expiring men
+## decide by the fire. Veterancy breeds attachment; hard money talks.
+const TERM_MIN_DAYS := 60
+const TERM_MAX_DAYS := 120
+const REENLIST_TERM_DAYS := 90
+const BASE_STAY_CHANCE := 0.35
+const STAY_PER_DRILL := 0.10
+const STAY_PER_BATTLE := 0.05   # up to four battles' worth
+const BOUNTY_STAY_BONUS := 0.30
 ## Battles survived -> earned drill (docs/02: Green -> Drilled ->
 ## Veteran -> Old Guard track, mapped onto Formation.Drill).
 const VETERANCY_TIERS := [
@@ -44,6 +55,7 @@ var day := 0                    # campaign day counter
 var founded_seed := 0
 var soldiers: Array[SimSoldier] = []
 var memorial: Array[Dictionary] = []   # the book of the dead — never shrinks
+var mustered_out: Array[Dictionary] = []  # honorably home: terms served out
 var _next_id := 0
 
 
@@ -67,6 +79,7 @@ func _generate(rng: RandomNumberGenerator) -> SimSoldier:
 	s.home_town = TOWNS[rng.randi() % TOWNS.size()]
 	s.age = 16 + int(pow(rng.randf(), 1.5) * 29.0)  # young army, some greybeards
 	s.enlisted = "campaign day %d" % day
+	s.term_ends_day = day + rng.randi_range(TERM_MIN_DAYS, TERM_MAX_DAYS)
 	if rng.randf() < TRAIT_CHANCE:
 		s.traits.append(TRAITS[rng.randi() % TRAITS.size()])
 	return s
@@ -161,6 +174,52 @@ func refit(target_fit: int, roll_cap: int, rng: RandomNumberGenerator) -> Array[
 	return recruit(need, rng)
 
 
+## The decision curve, pure and diceless: how likely a man whose term
+## is up chooses the colors over home. Testable without RNG.
+static func stay_chance(s: SimSoldier, bounty_offered: bool) -> float:
+	var c := BASE_STAY_CHANCE \
+		+ STAY_PER_DRILL * float(s.drill_level) \
+		+ STAY_PER_BATTLE * float(mini(s.battles, 4))
+	if bounty_offered:
+		c += BOUNTY_STAY_BONUS
+	return clampf(c, 0.05, 0.9)
+
+
+func expiring_by(day_limit: int) -> Array[SimSoldier]:
+	var out: Array[SimSoldier] = []
+	for s in soldiers:
+		if s.term_ends_day >= 0 and s.term_ends_day <= day_limit:
+			out.append(s)
+	return out
+
+
+## Terms come due at camp. Each expiring man decides by the fire; a
+## re-enlistment bounty is offered while `bounty_slots` (what the pay
+## chest can cover) last, and is only PAID for men who take it and
+## stay. Those who go walk into the mustered-out ledger — honorably.
+func process_expirations(rng: RandomNumberGenerator, bounty_slots: int) -> Dictionary:
+	var stayed: Array[String] = []
+	var departed: Array[String] = []
+	var bounties_paid := 0
+	for s in expiring_by(day):
+		var offer := bounty_slots > 0
+		if rng.randf() < stay_chance(s, offer):
+			s.term_ends_day = day + REENLIST_TERM_DAYS
+			stayed.append(s.display_name())
+			if offer:
+				bounty_slots -= 1
+				bounties_paid += 1
+		else:
+			var d := s.to_dict()
+			d["fate"] = ("sent home to heal — term expired, campaign day %d" % day) \
+				if s.status == SimSoldier.Status.WOUNDED \
+				else ("term expired — went home, campaign day %d" % day)
+			mustered_out.append(d)
+			soldiers.erase(s)
+			departed.append(s.display_name())
+	return {"stayed": stayed, "departed": departed, "bounties_paid": bounties_paid}
+
+
 ## Fresh men from the recruiting party: green, unknown, and about to
 ## stand next to veterans who remember everyone they've replaced.
 func recruit(count: int, rng: RandomNumberGenerator) -> Array[String]:
@@ -198,6 +257,7 @@ func to_dict() -> Dictionary:
 		"next_id": _next_id,
 		"soldiers": soldier_dicts,
 		"memorial": memorial,
+		"mustered_out": mustered_out,
 	}
 
 
@@ -216,4 +276,8 @@ static func from_dict(d: Dictionary) -> Roster:
 		var nd: Dictionary = SimSoldier.from_dict(entry).to_dict()
 		nd["fate"] = entry.get("fate", "")
 		r.memorial.append(nd)
+	for entry in d.get("mustered_out", []):
+		var nd: Dictionary = SimSoldier.from_dict(entry).to_dict()
+		nd["fate"] = entry.get("fate", "")
+		r.mustered_out.append(nd)
 	return r

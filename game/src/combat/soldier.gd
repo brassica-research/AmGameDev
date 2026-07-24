@@ -11,8 +11,9 @@ var given_name: String
 var surname: String
 var home_town: String = ""
 var age: int = 20
-var enlisted: String = ""       # ISO date; enlistments EXPIRE (docs/02)
+var enlisted: String = ""       # flavor record of when he signed
 var enlistment_ends: String = ""
+var term_ends_day: int = -1     # campaign day his term expires (docs/02: enlistments EXPIRE); -1 = no term on record
 var drill_level: int = 0        # Formation.Drill
 var status: int = Status.FIT
 var battles: int = 0
@@ -28,7 +29,8 @@ func to_dict() -> Dictionary:
 	return {
 		"id": id, "given_name": given_name, "surname": surname,
 		"home_town": home_town, "age": age, "enlisted": enlisted,
-		"enlistment_ends": enlistment_ends, "drill_level": drill_level,
+		"enlistment_ends": enlistment_ends, "term_ends_day": term_ends_day,
+		"drill_level": drill_level,
 		"status": status, "battles": battles,
 		"recovery_days": recovery_days, "traits": traits,
 	}
@@ -43,6 +45,7 @@ static func from_dict(d: Dictionary) -> SimSoldier:
 	s.age = int(d.get("age", 20))
 	s.enlisted = d.get("enlisted", "")
 	s.enlistment_ends = d.get("enlistment_ends", "")
+	s.term_ends_day = int(d.get("term_ends_day", -1))
 	s.drill_level = int(d.get("drill_level", 0))
 	s.status = int(d.get("status", Status.FIT))
 	s.battles = int(d.get("battles", 0))

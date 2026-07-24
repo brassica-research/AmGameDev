@@ -47,6 +47,21 @@ economy feels every casualty.
   `.gd`, `.json`), so there is nothing else to install.
 - **git**, to clone the repository.
 
+**Hardware.** Modest — almost any 64-bit machine from the last decade:
+
+| | Minimum | Notes |
+|---|---|---|
+| OS | Windows 10+, macOS 10.13+, or Linux | 64-bit (x86_64 or ARM64) |
+| RAM | 4 GB (8 GB comfortable) | the editor is the hungry part, not the game |
+| GPU | Anything **Vulkan 1.0**-capable — AMD/NVIDIA from ~2012 on, Intel HD 500-series+ integrated, Apple Silicon or Metal-era Macs (via MoltenVK) | required by the default Forward+ renderer this project uses |
+| GPU fallback | OpenGL 3.3 only? Run with `--rendering-method gl_compatibility --rendering-driver opengl3` | works even under pure software rendering — our CI films the game that way, with no GPU at all |
+| Disk | ~150 MB total | editor + project |
+
+The M1 grey-box itself is deliberately trivial to draw (a few hundred
+boxes, one light): integrated graphics runs it at 60 fps with headroom.
+The 600-soldier performance bar in `docs/07` targets *future* art, not
+this build.
+
 ### Get the code
 
 ```
@@ -122,7 +137,8 @@ Crown regular company, 240 yards apart.
 | `R` | Rally (when your line wavers or breaks) |
 | `V` | Toggle cinematic camera (the demo-capture director) |
 | `M` | The memorial book — every soldier you have lost, by name |
-| `ENTER` | Campaign: march again after the after-action report. Demos: restart |
+| `ENTER` | Campaign: march again after the after-action (no bounty). Demos: restart |
+| `B` | Campaign, at the after-action: camp with re-enlistment bounties — 8 specie a man who stays |
 
 The 15–20 second reload is the heart of the game — commit your volley
 badly and the field belongs to the bayonet. The AI plays by the same
@@ -137,7 +153,17 @@ to stand* — though the company's books carry at most sixty names, so a
 deep wounded list still starves the line; veterans' drill rises with
 battles survived, so the company you lose men from is mechanically
 worse tomorrow. When recovered men crowd past forty fit, the most
-drilled take the field and the rest wait in reserve. Everything persists in
+drilled take the field and the rest wait in reserve.
+
+**And enlistments expire.** Every man signs for 60–120 days; the HUD
+warns you when terms come due within a fortnight. At the after-action
+screen you face Washington's own December 1776 choice: march on and let
+the expiring men walk home (honorably — they enter the mustered-out
+ledger, not the memorial), or open the pay chest (`B`) and offer
+re-enlistment bounties. Veterans are likelier to stay; hard money makes
+everyone likelier; no man is a certainty. Specie comes from the
+paymaster after each battle — generous in victory, nearly empty-handed
+in defeat. Everything persists in
 `user://muster_roll.json` (backed up on every write). There are no
 mid-battle restarts in the campaign: the roll is the roll.
 

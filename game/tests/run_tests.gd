@@ -26,6 +26,7 @@ func _initialize() -> void:
 	_test_roster_persistence_roundtrip()
 	_test_refit_to_fighting_strength()
 	_test_field_strength_cap()
+	_test_enlistment_expiry()
 	_test_campaign_three_battles()
 	print("")
 	print("%d checks, %d failures" % [checks, failures])
@@ -290,6 +291,10 @@ func _test_roster_persistence_roundtrip() -> void:
 	brigade.take_casualties(8, rng)
 	roster.apply_after_action(brigade.soldiers, rng)
 	roster.advance_days(30, rng)
+	for s in roster.soldiers:
+		s.term_ends_day = roster.day  # everyone's term is up
+	roster.process_expirations(rng, 3)
+	check(roster.mustered_out.size() > 0, "round-trip case includes mustered-out men")
 	var a := JSON.stringify(roster.to_dict())
 	var b := JSON.stringify(Roster.from_dict(JSON.parse_string(a)).to_dict())
 	check(a == b, "save -> load -> save is byte-identical")
@@ -336,6 +341,51 @@ func _test_field_strength_cap() -> void:
 	check(ordered, "battle order is neutral — veterans don't head the casualty queue")
 
 
+func _test_enlistment_expiry() -> void:
+	print("\n-- Enlistments expire: the December 1776 mechanic")
+	# The decision curve, diceless and monotonic.
+	var green := SimSoldier.new()
+	var vet := SimSoldier.new()
+	vet.drill_level = Formation.Drill.VETERAN
+	vet.battles = 6
+	check(Roster.stay_chance(vet, false) > Roster.stay_chance(green, false),
+		"veterans are likelier to stand by the colors")
+	check(Roster.stay_chance(green, true) > Roster.stay_chance(green, false),
+		"hard money talks")
+	check(Roster.stay_chance(vet, true) <= 0.9, "no man is a certainty")
+	# Integration: a whole company's terms come due at once, no chest.
+	var roster := Roster.muster_new("Short-Term Levies", 40, 1776)
+	for s in roster.soldiers:
+		s.term_ends_day = 0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1776
+	var report := roster.process_expirations(rng, 0)
+	var n_stayed: int = (report["stayed"] as Array).size()
+	var n_departed: int = (report["departed"] as Array).size()
+	check(n_stayed + n_departed == 40, "every expiring man decides")
+	check(n_departed > 0 and n_stayed > 0, "some go home, some stand")
+	check(int(report["bounties_paid"]) == 0, "no chest, no bounties")
+	check(roster.mustered_out.size() == n_departed, "the departed enter the mustered-out ledger, not the memorial")
+	check(roster.memorial.is_empty(), "going home is not dying")
+	check(roster.soldiers.size() == n_stayed, "the roll holds only those who signed again")
+	var renewed := true
+	for s in roster.soldiers:
+		if s.term_ends_day != roster.day + Roster.REENLIST_TERM_DAYS:
+			renewed = false
+	check(renewed, "re-enlistment writes a fresh ninety-day term")
+	# The chest changes the arithmetic (same dice, more men persuaded).
+	var roster2 := Roster.muster_new("Short-Term Levies", 40, 1776)
+	for s in roster2.soldiers:
+		s.term_ends_day = 0
+	var rng2 := RandomNumberGenerator.new()
+	rng2.seed = 1776
+	var report2 := roster2.process_expirations(rng2, 99)
+	check((report2["stayed"] as Array).size() > n_stayed,
+		"the bounty keeps more men than the speech alone")
+	check(int(report2["bounties_paid"]) == (report2["stayed"] as Array).size(),
+		"bounties are paid only to men who took one and stayed")
+
+
 ## The whole loop the film shows, run headless: three engagements with
 ## ONE persistent roster — casualties accumulate, camp heals or buries,
 ## recruits refill, and every man is accounted for at the end.
@@ -356,8 +406,8 @@ func _test_campaign_three_battles() -> void:
 			sim.get_company("continentals").brigade.soldiers, rng)
 		roster.advance_days(14, rng)
 		recruits_total += roster.refit(40, 60, rng).size()
-	check(roster.soldiers.size() + roster.memorial.size() == 40 + recruits_total,
-		"every man who ever mustered is on the roll or in the book — none lost to bookkeeping")
+	check(roster.soldiers.size() + roster.memorial.size() + roster.mustered_out.size() == 40 + recruits_total,
+		"every man who ever mustered is on the roll, in the book, or home — none lost to bookkeeping")
 	check(roster.memorial.size() > 0, "three battles against regulars leave names in the book")
 	check(roster.day == 42, "six weeks of campaign have passed")
 	var veterans := 0

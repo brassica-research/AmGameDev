@@ -1,5 +1,7 @@
 # LET TYRANTS SHAKE (working title)
 
+[![CI](https://github.com/brassica-research/AmGameDev/actions/workflows/ci.yml/badge.svg)](https://github.com/brassica-research/AmGameDev/actions/workflows/ci.yml)
+
 A brigade-scale action game of the American Revolution — inspired by the
 battalion hack-and-slash structure of *Tears of Metal*, but grounded,
 realistic, and built on the historical record.

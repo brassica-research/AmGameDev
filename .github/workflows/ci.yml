@@ -9,6 +9,7 @@ jobs:
   validate-data:
     name: Validate game data (JSON)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - name: Parse every data file
@@ -30,6 +31,7 @@ jobs:
   sim-tests:
     name: Deterministic sim tests (headless Godot)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       GODOT_VERSION: 4.4-stable
     steps:

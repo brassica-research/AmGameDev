@@ -18,6 +18,7 @@ concurrency: demo-capture
 jobs:
   capture:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       GODOT_VERSION: 4.4-stable
     steps:
@@ -57,7 +58,8 @@ jobs:
             --audio-driver Dummy \
             --resolution 1280x720 \
             --fixed-fps 30 --write-movie /tmp/demo.avi \
-            -- --auto --scenario=night_assault --lanes=2 --quit-after=85
+            -- --auto --scenario=campaign --campaign-seed=17750419 \
+            --battles=3 --time-scale=1.5 --quit-after=420
 
       - name: Encode mp4 and stills
         run: |

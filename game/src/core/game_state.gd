@@ -14,6 +14,14 @@ var roster: Roster = null
 var battles_fought := 0
 var campaign_rng := RandomNumberGenerator.new()
 
+## Demo/film sandbox: when true, save() is a no-op so an automated
+## campaign capture can never touch a player's real muster roll.
+var demo_mode := false
+
+## Transient camp news for the HUD (not persisted).
+var last_recruits: Array[String] = []
+var last_camp_days := 0
+
 ## Economy (docs/02): hard money vs depreciating Continental paper.
 ## Wired into the hub loop in a later milestone; persisted now.
 var specie := 0
@@ -63,12 +71,14 @@ func rest_and_refit(days: int) -> Array[String]:
 	var recruits: Array[String] = []
 	if need > 0:
 		recruits = roster.recruit(need, campaign_rng)
+	last_recruits = recruits
+	last_camp_days = days
 	save()
 	return recruits
 
 
 func save() -> void:
-	if roster == null:
+	if roster == null or demo_mode:
 		return
 	var data := {
 		"version": SAVE_VERSION,

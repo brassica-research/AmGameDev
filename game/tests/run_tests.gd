@@ -24,6 +24,7 @@ func _initialize() -> void:
 	_test_veterancy_and_drill()
 	_test_wound_recovery()
 	_test_roster_persistence_roundtrip()
+	_test_campaign_three_battles()
 	print("")
 	print("%d checks, %d failures" % [checks, failures])
 	quit(1 if failures > 0 else 0)
@@ -295,6 +296,39 @@ func _test_roster_persistence_roundtrip() -> void:
 		"the memorial book crosses the save intact")
 	check(restored.company_drill() == roster.company_drill(),
 		"drill rating survives the round trip")
+
+
+## The whole loop the film shows, run headless: three engagements with
+## ONE persistent roster — casualties accumulate, camp heals or buries,
+## recruits refill, and every man is accounted for at the end.
+func _test_campaign_three_battles() -> void:
+	print("\n-- Campaign integration: three battles, one muster roll")
+	var roster := Roster.muster_new("Campaign Company", 40, 555)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 555
+	var recruits_total := 0
+	for b in 3:
+		var sim := BattleSim.create_campaign_skirmish(1000 + b, roster, true, 140.0)
+		var steps := 0
+		while not sim.over and steps < 12000:
+			sim.step()
+			steps += 1
+		check(sim.over, "campaign battle %d reaches a verdict" % (b + 1))
+		roster.apply_after_action(
+			sim.get_company("continentals").brigade.soldiers, rng)
+		roster.advance_days(14, rng)
+		var need := 40 - roster.soldiers.size()
+		if need > 0:
+			recruits_total += roster.recruit(need, rng).size()
+	check(roster.soldiers.size() + roster.memorial.size() == 40 + recruits_total,
+		"every man who ever mustered is on the roll or in the book — none lost to bookkeeping")
+	check(roster.memorial.size() > 0, "three battles against regulars leave names in the book")
+	check(roster.day == 42, "six weeks of campaign have passed")
+	var veterans := 0
+	for s in roster.soldiers:
+		if s.battles >= 2:
+			veterans += 1
+	check(veterans > 0, "survivors of multiple battles are becoming veterans")
 
 
 func _run_hash_trace(seed_value: int) -> Array[int]:

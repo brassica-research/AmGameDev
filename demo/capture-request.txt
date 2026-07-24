@@ -1,1 +1,1 @@
-capture 3 — bayonets-only night assault (Stony Point pattern): silent approach, sentry detection, alarm, garrison fire-at-will in the dark, columns charge home, quarter given. 85 s, faster cuts.
+capture 4 — the campaign film: three battles, one muster roll. Sandboxed auto-campaign (seed 17750419), butcher's bill and memorial book between engagements, camp interstitials with named recruits, 1.5x time scale.

@@ -17,9 +17,14 @@ extends Node3D
 ##   --auto                    player company is AI-driven (auto-battle)
 ##   --scenario=field          the ephemeral demo battle (no persistence)
 ##   --scenario=night_assault  bayonets-only night storm (Stony Point pattern)
+##   --scenario=campaign       with --auto: sandboxed campaign film — the
+##                             save file is never touched (demo_mode)
+##   --campaign-seed=N         founding seed for the sandboxed campaign
+##   --battles=N               auto-campaign: quit after N battles
+##   --time-scale=X            speed the film up (Engine.time_scale)
 ##   --lanes=2                 two engagement lanes (four companies)
 ##   --start-range=N           opening distance in yards (field scenario only)
-##   --quit-after=N            quit N seconds in (or ~6 s after the verdict)
+##   --quit-after=N            per-scene safety quit (or ~6 s after verdict)
 
 const PLAYER_ID := "continentals"
 const FILES := 20          # men per rank in the grey-box line
@@ -49,7 +54,9 @@ var _anim_time := 0.0
 
 var _scenario := "field"
 var _campaign := false
+var _battles_limit := 0
 var _report: Dictionary = {}
+var _report_linger := 0.0
 var _show_memorial := false
 var _cinematic := false
 var _shot := SHOT_AERIAL
@@ -78,10 +85,18 @@ func _ready() -> void:
 	_lanes = clampi(int(String(args.get("lanes", "1"))), 1, 2)
 	_quit_after = float(String(args.get("quit-after", "0")))
 	_cinematic = _auto
+	Engine.time_scale = clampf(float(String(args.get("time-scale", "1"))), 0.5, 3.0)
 	if _scenario == "campaign":
 		_campaign = true
-		GameState.ensure_campaign()
-		sim = BattleSim.create_campaign_skirmish(GameState.next_battle_seed(), GameState.roster)
+		_battles_limit = int(String(args.get("battles", "0")))
+		if _auto:
+			GameState.demo_mode = true  # the real muster roll is untouchable
+			if GameState.roster == null:
+				GameState.new_campaign(int(String(args.get("campaign-seed", "17750419"))))
+		else:
+			GameState.ensure_campaign()
+		sim = BattleSim.create_campaign_skirmish(GameState.next_battle_seed(),
+			GameState.roster, _auto, 140.0 if _auto else 200.0)
 	elif _scenario == "night_assault":
 		sim = BattleSim.create_night_assault(17790716, _auto, _lanes)  # July 16, 1779
 		_shot_max_age = 5.0  # the dark cuts faster
@@ -126,6 +141,16 @@ func _process(delta: float) -> void:
 		_update_camera_follow()
 	if _campaign and sim.over and _report.is_empty():
 		_report = GameState.finish_battle(sim)  # the bill is paid exactly once
+		if _auto:
+			_show_memorial = true  # the film lingers on the book of the dead
+	if _campaign and _auto and not _report.is_empty():
+		_report_linger += delta
+		if _report_linger > 7.0:
+			if _battles_limit > 0 and GameState.battles_fought >= _battles_limit:
+				get_tree().quit()
+			else:
+				GameState.rest_and_refit(14)
+				get_tree().reload_current_scene()
 	_update_hud()
 	if _quit_after > 0.0:
 		_elapsed += delta
@@ -545,6 +570,10 @@ func _update_hud() -> void:
 			GameState.roster.day, GameState.battles_fought + (1 if _report.is_empty() else 0),
 			GameState.roster.fit_count(), GameState.roster.wounded_count(),
 			GameState.roster.memorial.size()])
+		if _elapsed < 8.0 and not GameState.last_recruits.is_empty():
+			lines.append("IN CAMP %d DAYS — %d recruits joined the company: %s" % [
+				GameState.last_camp_days, GameState.last_recruits.size(),
+				", ".join(GameState.last_recruits)])
 	lines.append("")
 	if pc != null:
 		var hold_txt := "  hold %.1fs (bonus %.0f%%)" % [pc.present_hold, pc.hold_bonus() * 100.0] \

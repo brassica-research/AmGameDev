@@ -156,7 +156,11 @@ func _process(delta: float) -> void:
 		_elapsed += delta
 		if sim.over:
 			_over_linger += delta
-		if _elapsed >= _quit_after or _over_linger > 6.0:
+		# In an auto-campaign the battles-limit flow owns the quit —
+		# the 6 s post-verdict quit would cut the film off before the
+		# after-action linger can advance to the next battle.
+		var linger_quit := _over_linger > 6.0 and not _campaign
+		if _elapsed >= _quit_after or linger_quit:
 			get_tree().quit()
 	else:
 		_elapsed += delta

@@ -96,15 +96,17 @@ func _build_environment() -> void:
 	var we := WorldEnvironment.new()
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.04, 0.05, 0.09)
+	env.background_color = Color(0.07, 0.09, 0.14)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.42, 0.46, 0.62)
-	env.ambient_light_energy = 0.32
+	env.ambient_light_color = Color(0.48, 0.53, 0.70)
+	# Bright enough to read the stage; moonlight-on-snow does the rest.
+	# (Playtest note: the first capture was near-black on real displays.)
+	env.ambient_light_energy = 0.75
 	we.environment = env
 	add_child(we)
 	_env_light = DirectionalLight3D.new()
 	_env_light.rotation_degrees = Vector3(-40.0, -30.0, 0.0)
-	_env_light.light_energy = 0.4  # first-quarter moonlight (docs/05)
+	_env_light.light_energy = 0.8  # first-quarter moon over snow (docs/05)
 	_env_light.light_color = Color(0.7, 0.78, 0.98)
 	add_child(_env_light)
 	_camera = Camera3D.new()
@@ -118,7 +120,7 @@ func _build_stage(stage: Dictionary) -> void:
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(120.0, 120.0)
 	var gmat := StandardMaterial3D.new()
-	gmat.albedo_color = Color(0.13, 0.14, 0.17)  # packed snow over cobbles
+	gmat.albedo_color = Color(0.34, 0.36, 0.42)  # packed snow over cobbles
 	plane.material = gmat
 	ground.mesh = plane
 	add_child(ground)
@@ -253,7 +255,7 @@ func _on_actor(event: Dictionary) -> void:
 				var box := BoxMesh.new()
 				box.size = Vector3(0.45, 0.14, 1.6)
 				var mat := StandardMaterial3D.new()
-				mat.albedo_color = Color(0.22, 0.13, 0.12)
+				mat.albedo_color = Color(0.30, 0.18, 0.16)
 				box.material = mat
 				mi.mesh = box
 				var h := (k * 2654435761) % 100

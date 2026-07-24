@@ -33,6 +33,7 @@ func _initialize() -> void:
 	_test_scrum_regroup()
 	_test_king_street_cutscene()
 	_test_art_form_pass()
+	_test_lexington_green()
 	_test_campaign_three_battles()
 	print("")
 	print("%d checks, %d failures" % [checks, failures])
@@ -664,6 +665,60 @@ func _test_art_form_pass() -> void:
 			"res://src/presentation/cutscene_scene.gd",
 			"res://src/presentation/camp_scene.gd"]:
 		check(load(path) != null, "parses: %s" % path)
+
+
+## Mission 1.5 opening (docs/03): the Lexington script is part of the
+## sim, so both of its endings must be deterministic and honest — the
+## shot belongs to no musket, dispersing in time is bloodless, and
+## standing means the volley.
+func _test_lexington_green() -> void:
+	print("\n-- Lexington Green: the nineteenth of April")
+	var sim := BattleSim.create_lexington(19775, true)
+	var militia := sim.get_company("continentals")
+	check(militia != null and militia.hold_fire, "Parker's order stands: hold your fire")
+	var guard := 0
+	while sim.first_shot_tick < 0 and not sim.over and guard < 8000:
+		sim.step()
+		guard += 1
+	check(sim.first_shot_tick > 0, "the shot rings out")
+	check(militia.platoon_shots[0] + militia.platoon_shots[1] == 0,
+		"not a militia musket fired before it")
+	check(not militia.hold_fire, "after the shot, the order is moot")
+	guard = 0
+	while not sim.over and guard < 12000:
+		sim.step()
+		guard += 1
+	check(sim.over, "the Green is decided")
+	check(sim.winner_side == 1, "history holds: the regulars clear the Green")
+	check(not sim.dispersed, "standing meant the volley")
+	check(militia.effectives() < 38, "and the volley cost men")
+	# Deterministic despite the script: same seed, same battle, tick for tick.
+	var a := BattleSim.create_lexington(4444, true)
+	var b := BattleSim.create_lexington(4444, true)
+	var traces_match := true
+	for i in 900:
+		a.step()
+		b.step()
+		if a.state_hash() != b.state_hash():
+			traces_match = false
+			break
+	check(traces_match, "the scripted scenario stays deterministic")
+	# The bloodless branch: withdraw at the demand and keep every man.
+	var s2 := BattleSim.create_lexington(19775, false)
+	guard = 0
+	while s2.script_stage < 2 and guard < 8000:
+		s2.step()
+		guard += 1
+	check(s2.script_stage == 2, "the dispersal demand is made")
+	s2.bus.submit(s2.tick + 1, "continentals", "withdraw")
+	guard = 0
+	while not s2.over and guard < 8000:
+		s2.step()
+		guard += 1
+	check(s2.over and s2.dispersed, "dispersing in time ends it without a volley")
+	check(s2.first_shot_tick < 0, "no shot was ever fired")
+	var m2 := s2.get_company("continentals")
+	check(m2.effectives() == 38, "every man walks off the Green")
 
 
 ## Quiet variant for assertions inside loops — only failures print.

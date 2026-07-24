@@ -59,6 +59,15 @@ quality:
 - ✅ Camp screen v1 (also early): the encampment hub as a real scene —
   paged muster-roll review, fortnight postures (drill / forage / rest),
   the bounty decision, and the memorial book, between every battle
+- ✅ Lexington Green opening action (mission 1.5, first beat): the
+  scripted stand as sim — Parker's hold-fire order enforced through the
+  CommandBus, the dispersal demand, the standoff clock that pauses
+  while you withdraw, the shot no musket owns (`first_shot_tick`, never
+  attributed), the regulars' discipline snapping, and both endings
+  honest: disperse in time and every man walks off the Green; stand and
+  take the volley. `--scenario=lexington`; both branches + determinism
+  in CI. Still to come for the full slice: North Bridge, Battle Road,
+  terrain (walls/fences as cover), mission chaining.
 - Field Journal codex with real citations end-to-end
 - Sim-level individual movement (playtest directives): ✅ v1 landed as
   the close-combat scrum — inside 25 yds every man surges, fires, or

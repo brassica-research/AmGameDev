@@ -29,6 +29,16 @@ var _failsafe_fired := false
 var night := false
 var alarm_raised := false
 
+## Scripted-scenario state (docs/03 mission 1.5 "Nineteenth of April").
+## The script is part of the sim — it submits through the CommandBus on
+## fixed ticks, so scripted battles stay a pure function of the seed.
+var scripted := ""
+var script_stage := 0
+var script_wait := 0.0
+var first_shot_tick := -1     # the shot nobody will ever swear to
+var dispersed := false        # Lexington's bloodless branch
+var _auto_militia := false
+
 
 ## Standard M1 scenario: a drilled Continental company vs a regular
 ## Crown company, 240 yards apart. auto_player=true attaches an AI to
@@ -114,6 +124,30 @@ static func create_night_assault(seed_value: int, auto_player := false, lanes :=
 	return sim
 
 
+## Mission 1.5, opening action: Lexington Green, dawn, April 19, 1775.
+## Parker's ~38 fit militiamen stand on the Green under his order — stand
+## your ground, don't fire unless fired upon. The light infantry come on,
+## halt at close range, and demand dispersal. Then a single shot — the
+## sources genuinely disagree on whose, and the sim never says — and the
+## regulars' fire discipline snaps. The player's real decision is WHEN to
+## disperse: promptly costs the Green and no men; standing costs the
+## volley. Built strictly from the Parker and Pitcairn depositions.
+static func create_lexington(seed_value: int, auto_player := false) -> BattleSim:
+	var sim := BattleSim.new()
+	sim.rng.seed = seed_value
+	sim.scripted = "lexington"
+	sim._auto_militia = auto_player
+	var militia := make_company("continentals", 0, "Parker's Lexington Company",
+		38, Formation.Drill.MILITIA, -20.0, sim.rng, 0)
+	militia.hold_fire = true
+	sim.companies.append(militia)
+	sim.companies.append(make_company("crown", 1, "10th Regiment, Light Company",
+		40, Formation.Drill.REGULAR, 80.0, sim.rng, 0))
+	# No AI at first: the script walks the regulars on; command attaches
+	# only after the shot, when the field stops being a stage.
+	return sim
+
+
 static func make_company(id: String, side: int, display_name: String,
 		count: int, drill_level: int, start_y: float,
 		rng_ref: RandomNumberGenerator, lane := 0) -> BattleCompany:
@@ -133,6 +167,7 @@ func step() -> void:
 	tick += 1
 	for ai in ais:
 		ai.think(self)
+	_update_script()
 	for cmd in bus.drain_through(tick):
 		_apply(cmd)
 	_update_night_detection()
@@ -215,6 +250,9 @@ func _echo(c: BattleCompany, text: String) -> void:
 func _apply(cmd: Dictionary) -> void:
 	var c := get_company(String(cmd["actor"]))
 	if c == null or not c.is_active():
+		return
+	if c.hold_fire and String(cmd["verb"]) in ["present", "fire", "fire_at_will", "charge"]:
+		_echo(c, "Parker: 'Stand your ground. Don't fire unless fired upon.'")
 		return
 	match String(cmd["verb"]):
 		"advance":
@@ -559,6 +597,55 @@ func _update_night_detection() -> void:
 					if g.is_garrison and g.is_active():
 						g.brigade.take_morale_event(MoraleModel.Event.NIGHT_ALARM)
 				return
+
+
+## The Lexington script (docs/03 mission 1.5). Stage 0: the regulars come
+## on. Stage 1: at close range they halt and demand dispersal. Stage 2:
+## the standoff — withdrawing pauses the clock and, past 75 yards, ends
+## the action bloodless; standing runs the clock down to the shot. Stage
+## 3: the shot (attributed to no musket in this sim, as in the sources),
+## the regulars' discipline snaps, and command attaches to both sides.
+func _update_script() -> void:
+	if scripted != "lexington" or over:
+		return
+	var militia := get_company("continentals")
+	var regulars := get_company("crown")
+	if militia == null or regulars == null or not militia.is_active() or not regulars.is_active():
+		return
+	match script_stage:
+		0:
+			bus.submit(tick, "crown", "advance")
+			_log("Dawn, the nineteenth of April, 1775. Parker's company stands on the Green.")
+			script_stage = 1
+		1:
+			if absf(regulars.pos_y - militia.pos_y) < 55.0:
+				bus.submit(tick, "crown", "halt")
+				_log("An officer rides forward: 'Disperse, ye rebels! Damn you, throw down your arms and disperse!'")
+				script_wait = 12.0
+				script_stage = 2
+		2:
+			if absf(regulars.pos_y - militia.pos_y) > 75.0:
+				over = true
+				winner_side = 1
+				dispersed = true
+				_log("Parker's company disperses under protest, muskets kept. The Green is left to the King's troops.")
+				return
+			# Withdrawing holds the clock — the shot in this sim only
+			# comes while men still stand on the Green.
+			if militia.move_order != -1:
+				script_wait -= SimClock.TICK_DT
+				if script_wait <= 0.0:
+					script_stage = 3
+					first_shot_tick = tick
+					_log("A single shot. No man will ever swear to whose musket it was.")
+					militia.hold_fire = false
+					militia.brigade.take_morale_event(MoraleModel.Event.VOLLEY_RECEIVED)
+					bus.submit(tick, "crown", "fire_at_will")
+					ais.append(BattleAI.new("crown"))
+					if _auto_militia:
+						ais.append(BattleAI.new("continentals"))
+		_:
+			pass  # stage 3+: the ordinary sim owns the field
 
 
 ## Auto-battle guarantees: force a decision late, and if bayonets still

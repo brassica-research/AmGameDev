@@ -48,6 +48,9 @@ var bayonets_only := false    # muskets unloaded by written order; fire commands
 var is_garrison := false      # defends in place; subject to the night surrender rule
 var detect_range := 55.0      # sentry alertness: how close a silent column gets at night
 var advance_speed := ADVANCE_SPEED  # light infantry columns move at the quick step
+## Scenario flag (Lexington — docs/03 mission 1.5): the captain's standing
+## order. While true, fire and charge commands are refused, not queued.
+var hold_fire := false
 var pos_y: float = 0.0
 var prev_pos_y: float = 0.0   # for render interpolation
 var move_order: int = 0       # -1 withdraw, 0 halt, +1 advance

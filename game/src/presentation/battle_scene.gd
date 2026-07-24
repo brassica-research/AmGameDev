@@ -17,6 +17,9 @@ extends Node3D
 ##   --auto                    player company is AI-driven (auto-battle)
 ##   --scenario=field          the ephemeral demo battle (no persistence)
 ##   --scenario=night_assault  bayonets-only night storm (Stony Point pattern)
+##   --scenario=lexington      mission 1.5 opening: Parker's stand on the
+##                             Green — hold fire, judge the moment, disperse
+##                             or take the volley (docs/03)
 ##   --scenario=campaign       with --auto: sandboxed campaign film — the
 ##                             save file is never touched (demo_mode)
 ##   --campaign-seed=N         founding seed for the sandboxed campaign
@@ -114,6 +117,8 @@ func _ready() -> void:
 	elif _scenario == "night_assault":
 		sim = BattleSim.create_night_assault(17790716, _auto, _lanes)  # July 16, 1779
 		_shot_max_age = 5.0  # the dark cuts faster
+	elif _scenario == "lexington":
+		sim = BattleSim.create_lexington(17750419, _auto)  # April 19, 1775
 	else:
 		sim = BattleSim.create_demo(17750419, _auto, _lanes)
 		var start_range := float(String(args.get("start-range", "240")))

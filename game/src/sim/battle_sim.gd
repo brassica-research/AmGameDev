@@ -37,7 +37,6 @@ var script_stage := 0
 var script_wait := 0.0
 var first_shot_tick := -1     # the shot nobody will ever swear to
 var dispersed := false        # Lexington's bloodless branch
-var _auto_militia := false
 
 
 ## Standard M1 scenario: a drilled Continental company vs a regular
@@ -132,11 +131,13 @@ static func create_night_assault(seed_value: int, auto_player := false, lanes :=
 ## regulars' fire discipline snaps. The player's real decision is WHEN to
 ## disperse: promptly costs the Green and no men; standing costs the
 ## volley. Built strictly from the Parker and Pitcairn depositions.
-static func create_lexington(seed_value: int, auto_player := false) -> BattleSim:
+## `auto_player` is accepted for scenario-factory symmetry but unused:
+## the script itself drives Parker's company (see _update_script — a
+## line-doctrine AI would rally the broken back into the fire).
+static func create_lexington(seed_value: int, _auto_player := false) -> BattleSim:
 	var sim := BattleSim.new()
 	sim.rng.seed = seed_value
 	sim.scripted = "lexington"
-	sim._auto_militia = auto_player
 	var militia := make_company("continentals", 0, "Parker's Lexington Company",
 		38, Formation.Drill.MILITIA, -20.0, sim.rng, 0)
 	militia.hold_fire = true
@@ -649,8 +650,14 @@ func _update_script() -> void:
 					militia.brigade.take_morale_event(MoraleModel.Event.VOLLEY_RECEIVED)
 					bus.submit(tick, "crown", "fire_at_will")
 					ais.append(BattleAI.new("crown"))
-					if _auto_militia:
-						ais.append(BattleAI.new("continentals"))
+					# Parker's company gets NO line-doctrine AI, even in
+					# auto films: a generic commander rallies the broken
+					# and marches them back into the fire (CI caught it
+					# doing exactly that, down to two men). The script
+					# sets the ragged reply; when they break, nobody
+					# orders them back — they scatter and stay
+					# scattered, as on the day.
+					bus.submit(tick, "continentals", "fire_at_will")
 		_:
 			pass  # stage 3+: the ordinary sim owns the field
 

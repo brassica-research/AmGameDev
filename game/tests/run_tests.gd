@@ -696,14 +696,18 @@ func _test_lexington_green() -> void:
 		"not a militia musket fired before it")
 	check(not militia.hold_fire, "after the shot, the order is moot")
 	guard = 0
+	var broke := false
 	while not sim.over and guard < 12000:
 		sim.step()
+		if militia.state == BattleCompany.State.BROKEN:
+			broke = true
 		guard += 1
 	check(sim.over, "the Green is decided")
 	check(sim.winner_side == 1, "history holds: the regulars clear the Green")
 	check(not sim.dispersed, "standing meant the volley")
 	check(militia.effectives() < 38, "and the volley cost men")
 	check(sim.tick < BattleSim.HARD_END_TICK, "decided by arms, not the attrition clock")
+	check(broke, "the company breaks and scatters — no one rallies them back")
 	check(militia.effectives() > 2,
 		"the company BREAKS before it is annihilated (capture 15 regression)")
 	# Deterministic despite the script: same seed, same battle, tick for tick.

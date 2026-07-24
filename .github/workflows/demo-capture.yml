@@ -8,6 +8,10 @@ name: Demo Capture
 on:
   workflow_dispatch:
   push:
+    # Never auto-capture on main: a PR merge that touches the request
+    # file would otherwise film on main and commit a bot commit there,
+    # which then merge-conflicts with the next feature branch.
+    branches-ignore: [main]
     paths: ["demo/capture-request.txt"]
 
 permissions:

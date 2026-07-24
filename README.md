@@ -34,12 +34,77 @@ economy feels every casualty.
 | `docs/10-engine-evaluation.md` | Godot vs Unreal, weighed against current and expanded scope |
 | `game/` | Godot 4 project scaffold (data-driven campaign, sim-core stubs) |
 
-## Opening the project
+## Setting up and running locally
 
-The `game/` directory is a Godot **4.4+** project. Install Godot from
-[godotengine.org](https://godotengine.org/download), open `game/project.godot`,
-and run the main scene. Everything is text-based (`.tscn`, `.gd`, `.json`)
-so the whole project diffs cleanly in git.
+### Prerequisites
+
+- **Godot 4.4 or newer** — the standard editor build (~50 MB), no extra
+  modules, addons, or export templates required. Get it from
+  [godotengine.org/download](https://godotengine.org/download), or via a
+  package manager: `brew install godot` (macOS), `winget install
+  GodotEngine.Godot` (Windows), or your distro's package (Linux — also
+  available as a flatpak). The whole project is text-based (`.tscn`,
+  `.gd`, `.json`), so there is nothing else to install.
+- **git**, to clone the repository.
+
+### Get the code
+
+```
+git clone https://github.com/brassica-research/AmGameDev.git
+cd AmGameDev
+```
+
+### Run the game
+
+**Editor route:** launch Godot → *Import* → select `game/project.godot`
+→ open → press **Play** (F5). The boot scene prints the campaign
+timeline and a headless auto-battle to the output console, then opens
+the battlefield.
+
+**Command-line route** (if `godot` is on your PATH):
+
+```
+godot --path game
+```
+
+First launch founds a new campaign automatically — forty named soldiers
+under your command (see *Playing*, below, for what that means).
+
+### Run a specific demo scenario
+
+Scenario flags go after a `--` separator:
+
+```
+# open-field meeting engagement, four companies on two lanes
+godot --path game res://scenes/battle.tscn -- --scenario=field --lanes=2
+
+# bayonets-only night assault (Stony Point pattern)
+godot --path game res://scenes/battle.tscn -- --scenario=night_assault --lanes=2
+
+# watch a sandboxed three-battle campaign play itself (never touches your save)
+godot --path game res://scenes/battle.tscn -- --auto --scenario=campaign --battles=3 --time-scale=1.5
+```
+
+### Run the test suite
+
+The same 60-plus-check deterministic sim suite CI runs:
+
+```
+godot --headless --path game --import
+godot --headless --path game -s res://tests/run_tests.gd
+```
+
+### Your campaign save
+
+The muster roll lives at `user://muster_roll.json` (with a `.backup`
+written before every save). `user://` maps to:
+
+- Linux: `~/.local/share/godot/app_userdata/Let Tyrants Shake (working title)/`
+- macOS: `~/Library/Application Support/Godot/app_userdata/Let Tyrants Shake (working title)/`
+- Windows: `%APPDATA%\Godot\app_userdata\Let Tyrants Shake (working title)\`
+
+Delete `muster_roll.json` to found a fresh company. Treat it gently —
+it is the game's entire memory of who lived and who didn't.
 
 ## Playing the M1 volley prototype
 
@@ -76,18 +141,12 @@ drilled take the field and the rest wait in reserve. Everything persists in
 `user://muster_roll.json` (backed up on every write). There are no
 mid-battle restarts in the campaign: the roll is the roll.
 
-Demo scenarios (command-line, after `--`): `--scenario=field` for the
-ephemeral meeting engagement, or `--scenario=night_assault` — the Stony
-Point pattern, where you lead a bayonets-only column (your muskets are
-unloaded by order and the fire keys will not save you) against a
-garrison whose sentries are listening for you in the dark.
-
-Headless test suite (same one CI runs):
-
-```
-godot --headless --path game --import
-godot --headless --path game -s res://tests/run_tests.gd
-```
+Demo scenarios (see *Setting up*, above, for the commands):
+`--scenario=field` is the ephemeral meeting engagement;
+`--scenario=night_assault` is the Stony Point pattern, where you lead a
+bayonets-only column (your muskets are unloaded by order and the fire
+keys will not save you) against a garrison whose sentries are listening
+for you in the dark.
 
 ## Status
 

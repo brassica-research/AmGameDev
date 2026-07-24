@@ -1,0 +1,124 @@
+{
+  "act": 1,
+  "title": "Act I — The Gathering Storm (1770–1775)",
+  "missions": [
+    {
+      "id": "a1_king_street",
+      "title": "Blood on King Street",
+      "date": "1770-03-05",
+      "location": "King Street, Boston, Massachusetts",
+      "type": "cinematic_vignette",
+      "weather": "night, snow and ice underfoot, first-quarter moonlight",
+      "summary": "The Boston Massacre as the game's opening: cutscene built strictly from Rex v. Preston trial testimony, then a playable aftermath carrying a wounded neighbor home through a city on the edge of eruption.",
+      "objectives": [
+        {"kind": "primary", "text": "Reach the Royal Exchange Lane surgeon's rooms without being caught in the crowd surges"}
+      ],
+      "cutscene": "king_street",
+      "sources": ["rex_v_preston_trial", "hoock_scars_of_independence"]
+    },
+    {
+      "id": "a1_gaspee",
+      "title": "The Gaspee",
+      "date": "1772-06-09",
+      "location": "Namquid Point, Narragansett Bay, Rhode Island",
+      "type": "vignette_stealth",
+      "weather": "moonless night, calm water, low tide",
+      "summary": "Night longboat raid on the grounded revenue schooner HMS Gaspee. Historical constraint honored as mechanics: Lt. Dudingston is wounded but no one is killed, the crew is put ashore, the ship burns to the waterline.",
+      "objectives": [
+        {"kind": "primary", "text": "Board the Gaspee before the tide refloats her"},
+        {"kind": "constraint", "text": "No killing — the raiders took the crew off alive"},
+        {"kind": "secondary", "text": "Keep every raider unidentified (the Crown's inquiry never named them)"}
+      ],
+      "sources": ["force_american_archives", "taylor_american_revolutions"]
+    },
+    {
+      "id": "a1_tea_party",
+      "title": "Saltwater Tea",
+      "date": "1773-12-16",
+      "location": "Griffin's Wharf, Boston, Massachusetts",
+      "type": "vignette_discipline",
+      "weather": "cold, clear early-winter evening",
+      "summary": "The Tea Party as a discipline mission: destroy 342 chests of East India Company tea, harm no one, damage nothing else, steal nothing. A participant who pocketed tea was historically stripped and shamed — pilfering is a fail state.",
+      "objectives": [
+        {"kind": "primary", "text": "Break and dump every chest before the Royal Navy reacts"},
+        {"kind": "constraint", "text": "No violence, no theft, no damage beyond the tea — replace the broken padlock"},
+        {"kind": "secondary", "text": "Sweep the decks clean before leaving (the crews did)"}
+      ],
+      "sources": ["boston_gazette", "taylor_american_revolutions"]
+    },
+    {
+      "id": "a1_powder_alarm",
+      "title": "The Powder Alarm",
+      "date": "1774-09-01",
+      "location": "Middlesex County, Massachusetts",
+      "type": "vignette_muster",
+      "weather": "late-summer dawn into day",
+      "summary": "Gage's troops seize provincial powder from the Quarry Hill magazine; rumor inflates it into open war. Ride to raise your town's company — and meet the men whose names will fill your muster roll for the next fourteen years.",
+      "objectives": [
+        {"kind": "primary", "text": "Alert and assemble your militia company on the town common"},
+        {"kind": "secondary", "text": "Separate rumor from fact along the way — false alarm spread costs standing"}
+      ],
+      "sources": ["force_american_archives", "fischer_paul_reveres_ride"]
+    },
+    {
+      "id": "a1_leslie_retreat",
+      "title": "Leslie's Standoff",
+      "date": "1775-02-26",
+      "location": "North Bridge, Salem, Massachusetts",
+      "type": "vignette_standoff",
+      "weather": "cold Sunday afternoon",
+      "summary": "Col. Leslie's 64th Foot comes for hidden cannon; the drawbridge is up and the town gathers. A standoff won with nerve and negotiation, not fire — hold the line without a shot. The war almost begins seven weeks early; it doesn't.",
+      "objectives": [
+        {"kind": "primary", "text": "Keep the militia steady — cohesion above waver — while negotiation plays out"},
+        {"kind": "constraint", "text": "Zero shots fired: any discharge fails the mission"}
+      ],
+      "sources": ["force_american_archives", "fischer_paul_reveres_ride"]
+    },
+    {
+      "id": "a1_lexington_concord",
+      "title": "Nineteenth of April",
+      "date": "1775-04-19",
+      "location": "Lexington Green — North Bridge, Concord — the Battle Road",
+      "type": "battle",
+      "weather": "clear spring day after a cold night",
+      "summary": "Triptych. Lexington Green: a scripted tragedy you cannot win, only witness and survive. North Bridge: the first ordered American volley. Battle Road: a running wall-to-wall skirmish harrying the column back to Boston. The full combat tutorial arc.",
+      "objectives": [
+        {"kind": "primary", "text": "Green: survive and disperse — do not stand against the volley"},
+        {"kind": "primary", "text": "North Bridge: hold Present until the order, then fire by division"},
+        {"kind": "primary", "text": "Battle Road: leapfrog fire positions along the walls; keep your company ahead of the flankers"},
+        {"kind": "secondary", "text": "Bring every man of your own company home"}
+      ],
+      "sources": ["fischer_paul_reveres_ride", "barker_diary", "mackenzie_diary"]
+    },
+    {
+      "id": "a1_bunker_hill",
+      "title": "The Redoubt",
+      "date": "1775-06-17",
+      "location": "Breed's Hill, Charlestown peninsula, Massachusetts",
+      "type": "battle_extraction",
+      "weather": "hot, clear; Charlestown burning by afternoon",
+      "summary": "Act finale. Hold the redoubt through two full British assaults with disciplined volley work at murderous range; when the ammunition gives out on the third, conduct a fighting withdrawal across Charlestown Neck. Peter Salem and Salem Poor stand in the ranks; Dr. Joseph Warren dies covering the retreat. A defeat that proves the army can stand.",
+      "objectives": [
+        {"kind": "primary", "text": "Break two assaults — hold fire until the order at fifty yards"},
+        {"kind": "primary", "text": "Third assault: withdraw by ranks through the sally port, rearguard at the rail fence"},
+        {"kind": "secondary", "text": "Bring off the wounded; every fit man carried one"}
+      ],
+      "cutscene": "warren_falls",
+      "sources": ["mcculloough_1776", "atkinson_british_are_coming", "salem_poor_petition"]
+    },
+    {
+      "id": "a1_hub_cambridge",
+      "title": "Cambridge Camp",
+      "date": "1775-07-03",
+      "location": "Cambridge, Massachusetts",
+      "type": "hub",
+      "weather": "New England high summer",
+      "summary": "First winter-quarters-style hub (in summer camp form). Washington takes command of the Continental Army on July 3 — your first sight of him. Convert a militia company into something that can become an army: first drill, first enlistment papers, first inventory of everything the army lacks.",
+      "objectives": [
+        {"kind": "hub", "text": "Sign your company to Continental enlistments (expiring December 31, 1775 — the clock that will haunt you)"},
+        {"kind": "hub", "text": "Meet the army: Washington, Knox, Greene introductions"}
+      ],
+      "sources": ["washington_general_orders", "mcculloough_1776"]
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "washington",
+  "name": "George Washington",
+  "born": "1732-02-22",
+  "role": "Commander-in-Chief, Continental Army (1775-06-15 to 1783-12-23); first President (1789-04-30)",
+  "portrayal": "Not marble. Loses his temper where the record says he did (Kip's Bay, Monmouth), doubts in his letters, grows across eight years. Likeness from the Peale portraits (1776, 1779), not the older Stuart iconography, until Act III.",
+  "documented_beats": [
+    {"date": "1775-07-03", "event": "Takes command at Cambridge", "mission": "a1_hub_cambridge"},
+    {"date": "1776-12-25", "event": "Orders The American Crisis read to the regiments; password 'Victory or Death'", "mission": "a2_trenton"},
+    {"date": "1777-01-03", "event": "Rides between the lines at Princeton to rally Mercer's broken brigade", "mission": "a2_princeton"},
+    {"date": "1777-12-23", "event": "'Starve, dissolve, or disperse' letter to Henry Laurens", "mission": "a2_hub_valley_forge"},
+    {"date": "1778-06-28", "event": "Turns the army around at Monmouth", "mission": "a2_monmouth"},
+    {"date": "1783-03-15", "event": "The spectacles at Newburgh", "mission": "a3_newburgh_address"},
+    {"date": "1783-12-23", "event": "Resigns his commission at Annapolis", "mission": "a3_farewell"},
+    {"date": "1789-04-30", "event": "First inauguration", "mission": "a3_inauguration"}
+  ],
+  "codex_notes": "The codex does not sand off the contradictions: the man who freed no one in life and everyone in his will; Dunmore's Proclamation viewed from Mount Vernon; the enslaved at the President's House. Sources carry the weight.",
+  "sources": ["chernow_washington", "washington_general_orders", "founders_online"]
+}

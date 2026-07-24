@@ -1,0 +1,15 @@
+{
+  "id": "daniel_morgan",
+  "name": "Daniel Morgan",
+  "born": "1736-07-06",
+  "role": "Commander, Provisional Rifle Corps; victor of Cowpens",
+  "portrayal": "The Old Wagoner: teamster's shoulders, a back scarred by 499 British lashes from the last war (he joked they miscounted and owed him one — documented), profane, shrewd, beloved. The anti-aristocrat counterweight to the Continental officer corps.",
+  "documented_beats": [
+    {"date": "1777-09-19", "event": "Turkey-call signals rallying his riflemen at Freeman's Farm", "mission": "a2_freemans_farm"},
+    {"date": "1777-10-07", "event": "Riflemen sweep the light infantry at Bemis Heights", "mission": "a2_bemis_heights"},
+    {"date": "1781-01-16", "event": "Explains the Cowpens plan around the fires the night before — militia asked for two volleys, withdrawal planned as a feature", "mission": "a2_cowpens"},
+    {"date": "1781-01-17", "event": "The double envelopment destroys Tarleton's Legion in about an hour", "mission": "a2_cowpens"}
+  ],
+  "gameplay_notes": "Command Moments: Cowpens is the mode's proof of concept (docs/09 M5). In campaign Path D, his firelight briefing is the game's best mission briefing — the player hears the plan the militia heard, in the register they heard it.",
+  "sources": ["babits_devil_of_a_whipping", "buchanan_road_to_guilford"]
+}

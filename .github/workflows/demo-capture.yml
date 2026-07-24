@@ -1,0 +1,82 @@
+name: Demo Capture
+
+# Records the M1 grey-box battle (auto-battle mode) to video on a
+# runner — Godot Movie Maker under Xvfb with Mesa software GL — then
+# commits demo/demo.mp4 + stills back to the branch so the video can be
+# reviewed without a local machine.
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ["demo/capture-request.txt"]
+
+permissions:
+  contents: write
+
+concurrency: demo-capture
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GODOT_VERSION: 4.4-stable
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: ~/godot
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64
+
+      - name: Download Godot
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot
+          curl -fsSL -o /tmp/godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d ~/godot
+          chmod +x ~/godot/Godot_v${GODOT_VERSION}_linux.x86_64
+
+      - name: Install capture tools (Xvfb, Mesa, ffmpeg)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb ffmpeg libgl1-mesa-dri
+
+      - name: Import project
+        run: |
+          ~/godot/Godot_v${GODOT_VERSION}_linux.x86_64 --headless --path game --import || true
+
+      - name: Record battle (Movie Maker, software GL)
+        run: |
+          xvfb-run -a -s "-screen 0 1280x720x24" \
+            ~/godot/Godot_v${GODOT_VERSION}_linux.x86_64 \
+            --path game res://scenes/battle.tscn \
+            --rendering-method gl_compatibility --rendering-driver opengl3 \
+            --audio-driver Dummy \
+            --resolution 1280x720 \
+            --fixed-fps 30 --write-movie /tmp/demo.avi \
+            -- --auto --scenario=campaign --campaign-seed=17750419 \
+            --battles=3 --time-scale=1.5 --quit-after=420
+
+      - name: Encode mp4 and stills
+        run: |
+          mkdir -p demo
+          ffmpeg -y -i /tmp/demo.avi -c:v libx264 -preset medium -crf 27 \
+            -pix_fmt yuv420p -movflags +faststart demo/demo.mp4
+          DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 demo/demo.mp4)
+          ffmpeg -y -ss 15 -i demo/demo.mp4 -frames:v 1 demo/still-early.png
+          ffmpeg -y -ss "$(echo "$DUR*0.5" | bc)" -i demo/demo.mp4 -frames:v 1 demo/still-mid.png
+          ffmpeg -y -ss "$(echo "$DUR*0.9" | bc)" -i demo/demo.mp4 -frames:v 1 demo/still-late.png
+          ls -la demo/
+
+      - name: Commit captured media to the branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add demo/demo.mp4 demo/still-*.png
+          git commit -m "Add captured M1 demo video [skip ci]"
+          git pull --rebase origin "${GITHUB_REF_NAME}" || true
+          git push origin "HEAD:${GITHUB_REF_NAME}"

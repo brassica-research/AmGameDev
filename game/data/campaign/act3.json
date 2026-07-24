@@ -1,0 +1,109 @@
+{
+  "act": 3,
+  "title": "Act III — A More Perfect Union (1782–1789)",
+  "missions": [
+    {
+      "id": "a3_hub_newburgh",
+      "title": "The Idle Camp",
+      "date": "1782-10-01",
+      "location": "New Windsor Cantonment, Newburgh, New York",
+      "type": "hub",
+      "summary": "Peace rumored, pay years in arrears, the officers furious at Congress. The hub systems turn dark: keep discipline in an army with nothing left to fight and every reason to march on Philadelphia. The quietest and most dangerous winter of the war.",
+      "objectives": [
+        {"kind": "hub", "text": "Hold desertion and dueling in check through the idle months"},
+        {"kind": "hub", "text": "The anonymous addresses circulate — learn who in YOUR mess is listening"}
+      ],
+      "sources": ["royster_revolutionary_people", "kohn_newburgh"]
+    },
+    {
+      "id": "a3_newburgh_address",
+      "title": "The Newburgh Address",
+      "date": "1783-03-15",
+      "location": "The Temple of Virtue, New Windsor Cantonment",
+      "type": "vignette_assembly",
+      "summary": "The near-coup, played as an influence scene among officers you have served with for eight years. You choose where you stand BEFORE Washington unexpectedly enters — the game remembers your answer even though history supplies the outcome. He reads his address to cold silence; then, fumbling with a letter, puts on his spectacles: 'I have not only grown gray but almost blind in the service of my country.' The room breaks. The republic survives its most dangerous hour.",
+      "objectives": [
+        {"kind": "choice", "text": "Before the meeting: your voice in the mess — for the memorial, for patience, or silence"},
+        {"kind": "primary", "text": "The assembly: witness (interactive staging, documented beats)"}
+      ],
+      "cutscene": "the_spectacles",
+      "sources": ["kohn_newburgh", "washington_newburgh_address", "chernow_washington"]
+    },
+    {
+      "id": "a3_evacuation_day",
+      "title": "Evacuation Day",
+      "date": "1783-11-25",
+      "location": "New York City",
+      "type": "vignette",
+      "summary": "March into liberated New York behind Knox as the last British boats pull for the fleet. At the Battery the flagstaff is greased and the ensign nailed up — a sailor named Van Arsdale climbs it with cleats as the crowd roars: the act's one moment of pure joy. In the harbor's background, the codex notes the other exodus: Black Loyalists sailing to Nova Scotia under the Book of Negroes, free by British ledger and lost to the new republic.",
+      "objectives": [
+        {"kind": "primary", "text": "The procession: your brigade's place of honor down the Bowery"},
+        {"kind": "codex", "text": "Field Journal: the Book of Negroes and the 60,000 who left"}
+      ],
+      "sources": ["jasanoff_libertys_exiles", "chernow_washington"]
+    },
+    {
+      "id": "a3_farewell",
+      "title": "Farewell",
+      "date": "1783-12-04",
+      "location": "Fraunces Tavern, New York — then the Maryland State House, Annapolis",
+      "type": "cinematic",
+      "summary": "Two rooms, one lesson. Fraunces Tavern: Washington, unable to speak, embraces each officer in silence — Knox first. Annapolis, December 23: hands trembling, he returns his commission to the civilian Congress — 'Having now finished the work assigned me, I retire from the great theatre of Action' — and rides for home to keep Christmas. The scene that made the republic real.",
+      "objectives": [],
+      "cutscene": "return_of_the_sword",
+      "sources": ["washington_annapolis_address", "chernow_washington"]
+    },
+    {
+      "id": "a3_home",
+      "title": "Home",
+      "date": "1784-06-01",
+      "location": "the player's home town",
+      "type": "vignette",
+      "summary": "Demobilized without back pay; your land certificates trade at pennies on the dollar to speculators. Plant, mend, bury, remember. A quiet, Joseph Plumb Martin-toned chapter — 'we were turned adrift like old worn-out horses' — that plants the seeds of everything that follows.",
+      "objectives": [
+        {"kind": "primary", "text": "A season at home: the farm, the debts, the neighbors who stayed"},
+        {"kind": "choice", "text": "Sell your certificates now, or hold paper that may never pay (the game does not tell you Hamilton is coming)"}
+      ],
+      "sources": ["martin_narrative", "richards_shays"]
+    },
+    {
+      "id": "a3_springfield",
+      "title": "Brothers' Blood",
+      "date": "1787-01-25",
+      "location": "the federal armory, Springfield, Massachusetts",
+      "type": "vignette_standoff",
+      "weather": "four degrees; deep snow",
+      "summary": "Shays' Rebellion. Farmers ruined by debt and taxes — many of them your own veterans; the roster system makes this literal — march on the armory behind Daniel Shays, a Bunker Hill veteran wearing the sword he was given for it. Shepard's militia fires warning shots, then grapeshot over open snow: four dead, no musket volley ever exchanged. The game's hardest scene because the enemy is your own muster roll, and the fight barely happens.",
+      "objectives": [
+        {"kind": "choice", "text": "Which side of the field are you on? Both are staffed with names you know"},
+        {"kind": "primary", "text": "The standoff: hold or advance — either way, live with the four in the snow"},
+        {"kind": "codex", "text": "Field Journal: the debt chain from unpaid soldier to Springfield, and what it did to the Articles' reputation"}
+      ],
+      "sources": ["richards_shays", "szatmary_shays"]
+    },
+    {
+      "id": "a3_philadelphia",
+      "title": "The Room Where the Union Was Argued",
+      "date": "1787-07-15",
+      "location": "taverns and print shops around the State House, Philadelphia",
+      "type": "vignette",
+      "summary": "You are not inside the Convention — the windows are nailed shut and the delegates sworn to silence — but a veteran officer's word carries weight in the City Tavern, and Springfield is the argument on every table. Debate vignette; the codex carries the Federalist and Anti-Federalist cases in their own words.",
+      "objectives": [
+        {"kind": "primary", "text": "Three conversations: a Shaysite exile, a nationalist officer of your old line, a printer setting both sides in type"},
+        {"kind": "codex", "text": "Field Journal: Brutus and Publius, fairly matched"}
+      ],
+      "sources": ["taylor_american_revolutions", "maier_ratification"]
+    },
+    {
+      "id": "a3_inauguration",
+      "title": "The First Citizen",
+      "date": "1789-04-30",
+      "location": "Federal Hall, Wall Street, New York",
+      "type": "cinematic",
+      "summary": "The inauguration on the Federal Hall balcony — the oath, the roar, 'Long live George Washington.' The camera finds your character in the crowd, older, and as the bells ring the game opens the memorial book: every soldier you lost, 1775 to 1787, name by name, as the closing credits. The republic they bought is the player's to weigh.",
+      "objectives": [],
+      "cutscene": "first_citizen",
+      "sources": ["chernow_washington", "maier_ratification"]
+    }
+  ]
+}

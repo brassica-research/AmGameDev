@@ -1,0 +1,11 @@
+{
+  "id": "hessian_grenadier",
+  "name": "Hessian Grenadiers",
+  "era_notes": "Subsidy troops, not caricatures: disciplined, professional, and — per Ewald's diary, our enemy-perspective codex source — often clearer-eyed about this war than their employers. Rall's garrison at Trenton was defeated by surprise and Knox's guns, not by comic-opera drunkenness (the codex corrects the myth).",
+  "weapon": "musket_potsdam",
+  "drill_default": 2,
+  "morale_profile": {"base_cohesion": 1.05, "bayonet_confidence": 1.15},
+  "formations": ["line", "column", "square"],
+  "reload_seconds": 17.0,
+  "sources": ["ewald_diary", "fischer_washingtons_crossing"]
+}

@@ -128,10 +128,10 @@ static func make_building(parent: Node3D, prop_name: String, pos: Vector3,
 	root.add_child(body)
 	# Windows: a lit fraction — Boston is home tonight, candles up.
 	var lit := StandardMaterial3D.new()
-	lit.albedo_color = Color(0.55, 0.38, 0.16)
+	lit.albedo_color = Color(0.48, 0.34, 0.15)
 	lit.emission_enabled = true
 	lit.emission = Color(1.0, 0.70, 0.32)
-	lit.emission_energy_multiplier = 1.6
+	lit.emission_energy_multiplier = 1.05
 	var dark := StandardMaterial3D.new()
 	dark.albedo_color = Color(0.05, 0.06, 0.09)
 	dark.roughness = 0.25

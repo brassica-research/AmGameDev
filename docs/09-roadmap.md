@@ -66,8 +66,15 @@ quality:
   attributed), the regulars' discipline snapping, and both endings
   honest: disperse in time and every man walks off the Green; stand and
   take the volley. `--scenario=lexington`; both branches + determinism
-  in CI. Still to come for the full slice: North Bridge, Battle Road,
-  terrain (walls/fences as cover), mission chaining.
+  in CI. Still to come for the full slice: North Bridge, mission chaining.
+- ✅ Terrain as cover + the Battle Road (mission 1.5, third act): cover
+  bands along the axis of advance (`src/sim/terrain.gd`) — fieldstone
+  walls, rail fences, sunken road — that cut incoming fire and steady
+  nerve, drawn exactly where the sim scores them. Two new doctrines:
+  `skirmish` (hold a wall, empty your musket, fall back to the next
+  wall before the bayonets arrive) and `column_march` (the column's
+  business is getting home). The column wins by reaching the far edge,
+  not by holding the field. `--scenario=battle_road`.
 - Field Journal codex with real citations end-to-end
 - Sim-level individual movement (playtest directives): ✅ v1 landed as
   the close-combat scrum — inside 25 yds every man surges, fires, or

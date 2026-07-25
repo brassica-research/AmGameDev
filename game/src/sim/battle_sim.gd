@@ -13,6 +13,8 @@ const HARD_END_TICK := 11000         # attrition verdict — guarantees terminat
 var rng := RandomNumberGenerator.new()
 var bus := CommandBus.new()
 var smoke := SmokeGrid.new()
+## Cover bands along the axis of advance. Empty = open field.
+var terrain := Terrain.new()
 var companies: Array[BattleCompany] = []
 var ais: Array[BattleAI] = []
 var tick := 0
@@ -131,6 +133,34 @@ static func create_night_assault(seed_value: int, auto_player := false, lanes :=
 ## regulars' fire discipline snaps. The player's real decision is WHEN to
 ## disperse: promptly costs the Green and no men; standing costs the
 ## volley. Built strictly from the Parker and Pitcairn depositions.
+## Mission 1.5, third act: the Battle Road (afternoon, April 19, 1775).
+## The King's column has to march sixteen miles home between stone
+## walls, and the countryside is behind them. Militia companies hold
+## successive walls, fire from cover, and fall back to the next wall
+## when the column closes — the running fight that turned a raid into a
+## war. The player commands a militia company; the column must survive
+## the gauntlet (it wins by reaching the field edge, not by killing).
+static func create_battle_road(seed_value: int, auto_player := false) -> BattleSim:
+	var sim := BattleSim.new()
+	sim.rng.seed = seed_value
+	sim.terrain = Terrain.battle_road()
+	var walls := [-70.0, -24.0]
+	var names := ["Parker's Lexington Company", "Reading Minute Company"]
+	var ids := ["continentals", "continentals_2"]
+	for i in 2:
+		var m := make_company(ids[i], 0, names[i], 32, Formation.Drill.MILITIA,
+			walls[i], sim.rng, 0)
+		m.fire_mode = BattleCompany.FireMode.AT_WILL  # skirmishers, not a line
+		sim.companies.append(m)
+		if i > 0 or auto_player:
+			sim.ais.append(BattleAI.new(ids[i], "skirmish"))
+	var column := make_company("crown", 1, "Smith's Column, 10th Foot",
+		42, Formation.Drill.REGULAR, 96.0, sim.rng, 0)
+	sim.companies.append(column)
+	sim.ais.append(BattleAI.new("crown", "column_march"))
+	return sim
+
+
 ## `auto_player` is accepted for scenario-factory symmetry but unused:
 ## the script itself drives Parker's company (see _update_script — a
 ## line-doctrine AI would rally the broken back into the fire).
@@ -347,7 +377,8 @@ func _fire_platoon(c: BattleCompany, p: int, target: BattleCompany,
 	var smoke_v := smoke.sample_between(c.pos_y, target.pos_y)
 	var disc := discipline * (0.6 if night else 1.0)  # firing at shapes in the dark
 	var hits := VolleyModel.resolve(shooters, dist, smoke_v,
-		c.cohesion(), c.drill(), hold_bonus, rng, disc)
+		c.cohesion(), c.drill(), hold_bonus, rng, disc,
+		terrain.fire_multiplier(target.pos_y))
 	target.brigade.take_casualties(hits, rng)
 	target.under_fire_s = maxf(target.under_fire_s, 10.0)  # hit or not, lead is coming in
 	if morale_event >= 0:
@@ -466,8 +497,10 @@ func _update_company(c: BattleCompany) -> void:
 		# full-rate recovery let firefights decide nothing — only the
 		# bayonet ever broke anyone).
 		var steadying := 0.15 if c.under_fire_s > 0.0 else 1.0
+		var sheltered := terrain.cover_at(c.pos_y) >= 0.3
 		c.brigade.cohesion = minf(1.0, c.cohesion()
-			+ MoraleModel.recovery_rate(true, true, false, c.drill()) * steadying * SimClock.TICK_DT)
+			+ MoraleModel.recovery_rate(true, true, sheltered, c.drill())
+			* steadying * SimClock.TICK_DT)
 
 
 ## Fire-at-will: each loaded platoon shoots on its own jittered clock —
@@ -679,6 +712,16 @@ func _failsafe() -> void:
 func _check_end() -> void:
 	if over:
 		return
+	# The Battle Road is won by arriving, not by holding the field: if
+	# the column marches off the far edge, it got home.
+	if not terrain.bands.is_empty():
+		var column := get_company("crown")
+		if column != null and column.is_active() \
+				and column.pos_y * column.facing() >= FIELD_EDGE - 1.0:
+			over = true
+			winner_side = 1
+			_log("The column reaches Charlestown Neck and the guns of the fleet.")
+			return
 	for side in [0, 1]:
 		var total := 0
 		var active := 0

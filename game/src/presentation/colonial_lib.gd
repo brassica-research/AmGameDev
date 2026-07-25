@@ -334,6 +334,45 @@ static func make_rail_fence(parent: Node3D, x: float, z0: float, z1: float) -> v
 	parent.add_child(mmi)
 
 
+## A New England fieldstone wall: irregular stacked stones, chest high,
+## running across the field at a given z. The thing the militia fought
+## from all the way to Charlestown (docs/03 1.5).
+static func make_stone_wall(parent: Node3D, z: float, x0: float, x1: float,
+		seed_v: int) -> void:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = _mottle_texture(Color(0.44, 0.44, 0.42),
+		[Color(0.38, 0.38, 0.37), Color(0.50, 0.49, 0.46), Color(0.34, 0.35, 0.34)], seed_v)
+	mat.uv1_triplanar = true
+	mat.uv1_scale = Vector3(0.35, 0.35, 0.35)
+	mat.roughness = 1.0
+	var stone := BoxMesh.new()
+	stone.size = Vector3(1.0, 0.42, 0.85)
+	stone.material = mat
+	var span := absf(x1 - x0)
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = stone
+	var per_course := maxi(int(span / 0.95), 2)
+	mm.instance_count = per_course * 3
+	var i := 0
+	for course in 3:
+		for k in per_course:
+			var h := _hash(seed_v + course * 613 + k)
+			var x := minf(x0, x1) + span * (float(k) + 0.5) / float(per_course)
+			x += (float(h % 100) / 100.0 - 0.5) * 0.35
+			var y := 0.21 + float(course) * 0.36
+			var zz := z + (float((h / 100) % 100) / 100.0 - 0.5) * 0.22
+			var scale := 0.85 + float((h / 7) % 100) / 100.0 * 0.35
+			mm.set_instance_transform(i, Transform3D(
+				Basis.IDENTITY.rotated(Vector3.UP, float(h % 62) / 62.0 * 0.5 - 0.25)
+					.scaled(Vector3(scale, 1.0, scale)),
+				Vector3(x, y, zz)))
+			i += 1
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = mm
+	parent.add_child(mmi)
+
+
 ## The quarter moon, hung opposite the moonlight's travel so the light
 ## direction and the disc agree. Only wide shots will catch it.
 static func make_moon(parent: Node3D, light: DirectionalLight3D) -> void:

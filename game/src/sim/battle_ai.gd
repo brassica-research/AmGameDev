@@ -10,6 +10,7 @@ extends RefCounted
 
 const THINK_PERIOD := 10          # thinks every 0.5 s, on its own phase
 const MIN_CHARGE_RANGE := 120.0
+const SKIRMISH_BREAK_RANGE := 42.0  # militia don't wait for the bayonet
 
 var company_id: String
 var doctrine := "line"            # "line" | "assault_column" | "garrison"
@@ -49,6 +50,52 @@ func think(sim: BattleSim) -> void:
 		elif dist < 90.0:
 			sim.bus.submit(sim.tick, company_id, "charge")
 		elif me.move_order != 1:
+			sim.bus.submit(sim.tick, company_id, "advance")
+		return
+
+	if doctrine == "skirmish":
+		# The Battle Road pattern: hold a wall, empty your musket into
+		# the column, and be gone before the bayonets arrive. Never
+		# stand in the open, never charge regulars.
+		if me.fire_mode == BattleCompany.FireMode.VOLLEY:
+			sim.bus.submit(sim.tick, company_id, "fire_at_will")
+			return
+		var my_cover := sim.terrain.cover_at(me.pos_y)
+		var falling_back := me.move_order == -1
+		if dist < SKIRMISH_BREAK_RANGE:
+			# They're closing. Next wall, at once.
+			var back := sim.terrain.cover_behind(me.pos_y, me.facing())
+			if back != INF:
+				if not falling_back:
+					sim.bus.submit(sim.tick, company_id, "withdraw")
+				elif absf(me.pos_y - back) < 2.0:
+					sim.bus.submit(sim.tick, company_id, "halt")
+			elif not falling_back:
+				sim.bus.submit(sim.tick, company_id, "withdraw")  # no wall left: keep going
+			return
+		if my_cover < 0.2:
+			# Caught in the open between walls — get behind something.
+			var near := sim.terrain.nearest_cover(me.pos_y)
+			if near != INF and absf(near - me.pos_y) > 2.0:
+				var toward_enemy := signf(foe.pos_y - me.pos_y) == signf(near - me.pos_y)
+				sim.bus.submit(sim.tick, company_id,
+					"advance" if toward_enemy else "withdraw")
+				return
+		if me.move_order != 0:
+			sim.bus.submit(sim.tick, company_id, "halt")
+		return
+
+	if doctrine == "column_march":
+		# The column's business is getting home, not winning a field.
+		# It answers fire on the march and only halts to clear a wall
+		# that is actually stopping it.
+		if me.fire_mode == BattleCompany.FireMode.VOLLEY and dist < 90.0:
+			sim.bus.submit(sim.tick, company_id, "fire_at_will")
+			return
+		if dist < 30.0 and foe.cohesion() < MoraleModel.WAVER_THRESHOLD:
+			sim.bus.submit(sim.tick, company_id, "charge")
+			return
+		if me.move_order != 1:
 			sim.bus.submit(sim.tick, company_id, "advance")
 		return
 

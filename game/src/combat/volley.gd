@@ -22,8 +22,11 @@ const MAX_HOLD_BONUS := 0.35
 
 ## `discipline` scales for fire order: 1.0 for a commanded volley,
 ## < 1.0 for independent fire-at-will (unsynchronized aim, docs/02).
+## `cover_mult` is the target's terrain protection (Terrain.fire_multiplier):
+## 1.0 in the open, lower behind a wall.
 static func hit_probability(range_yards: float, smoke: float, cohesion: float,
-		drill_level: int, hold_bonus: float = 0.0, discipline: float = 1.0) -> float:
+		drill_level: int, hold_bonus: float = 0.0, discipline: float = 1.0,
+		cover_mult: float = 1.0) -> float:
 	var drill_factor: float = 0.55 + 0.15 * float(drill_level)  # MILITIA .55 → VETERAN 1.0
 	var p := BASE_HIT - RANGE_FALLOFF * range_yards
 	p *= drill_factor
@@ -31,6 +34,7 @@ static func hit_probability(range_yards: float, smoke: float, cohesion: float,
 	p *= 1.0 - clampf(smoke, 0.0, 1.0) * SMOKE_PENALTY
 	p *= 1.0 + clampf(hold_bonus, 0.0, MAX_HOLD_BONUS)
 	p *= discipline
+	p *= clampf(cover_mult, 0.0, 1.0)
 	return maxf(p, MIN_HIT)
 
 
@@ -38,8 +42,10 @@ static func hit_probability(range_yards: float, smoke: float, cohesion: float,
 ## Returns casualties inflicted.
 static func resolve(shooters: int, range_yards: float, smoke: float,
 		cohesion: float, drill_level: int, hold_bonus: float,
-		rng: RandomNumberGenerator, discipline: float = 1.0) -> int:
-	var p := hit_probability(range_yards, smoke, cohesion, drill_level, hold_bonus, discipline)
+		rng: RandomNumberGenerator, discipline: float = 1.0,
+		cover_mult: float = 1.0) -> int:
+	var p := hit_probability(range_yards, smoke, cohesion, drill_level,
+		hold_bonus, discipline, cover_mult)
 	var hits := 0
 	for i in shooters:
 		if rng.randf() < p:

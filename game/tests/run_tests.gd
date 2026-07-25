@@ -34,6 +34,7 @@ func _initialize() -> void:
 	_test_king_street_cutscene()
 	_test_art_form_pass()
 	_test_lexington_green()
+	_test_terrain_and_battle_road()
 	_test_campaign_three_battles()
 	print("")
 	print("%d checks, %d failures" % [checks, failures])
@@ -737,6 +738,55 @@ func _test_lexington_green() -> void:
 	check(s2.first_shot_tick < 0, "no shot was ever fired")
 	var m2 := s2.get_company("continentals")
 	check(m2.effectives() == 38, "every man walks off the Green")
+
+
+## Terrain as cover, and the running fight it makes possible (docs/03
+## 1.5 third act) — the last open sim item from the M2 directives.
+func _test_terrain_and_battle_road() -> void:
+	print("\n-- Terrain: cover, and the Battle Road")
+	var t := Terrain.battle_road()
+	check(t.cover_at(-70.0) >= Terrain.WALL_COVER, "a man at the wall is behind the wall")
+	check(t.cover_at(-45.0) == 0.0, "open ground between walls is open ground")
+	check(t.fire_multiplier(-70.0) < t.fire_multiplier(-45.0),
+		"fire finds the sheltered less often")
+	check(t.kind_at(18.0) == "fence" and t.cover_at(18.0) < Terrain.WALL_COVER,
+		"a rail fence is not a stone wall")
+	# Fall-back geometry: side 0 faces +y, so its rear is DOWN-field.
+	check(t.cover_behind(-24.0, 1.0) == -70.0, "the next wall back is the one to your rear")
+	check(t.cover_behind(-70.0, 1.0) == INF, "at the last wall there is nothing behind you")
+	check(t.nearest_cover(-45.0) == -24.0, "caught in the open, the nearest wall is nearest")
+	# Cover has to matter to the volley math, not just the map.
+	var open_p := VolleyModel.hit_probability(60.0, 0.0, 1.0, 2, 0.0, 1.0, 1.0)
+	var wall_p := VolleyModel.hit_probability(60.0, 0.0, 1.0, 2, 0.0, 1.0,
+		t.fire_multiplier(-70.0))
+	check(wall_p < open_p * 0.8, "the wall is worth at least a fifth of the incoming")
+	# The running fight: militia give ground wall to wall, the column
+	# takes its beating and gets home, and it terminates either way.
+	var sim := BattleSim.create_battle_road(1775, true)
+	var militia := sim.get_company("continentals_2")
+	var column := sim.get_company("crown")
+	var start_y := militia.pos_y
+	var guard := 0
+	while not sim.over and guard < 11000:
+		sim.step()
+		guard += 1
+	check(sim.over, "the road reaches a verdict (tick %d)" % sim.tick)
+	check(column.brigade.volleys_fired > 0 or column.effectives() < 42,
+		"the column is engaged on the march")
+	check(militia.pos_y < start_y + 1.0,
+		"the skirmishers gave ground rather than stand (%.0f -> %.0f)" % [start_y, militia.pos_y])
+	check(sim.tick < BattleSim.HARD_END_TICK, "decided before the attrition clock")
+	# Determinism holds with terrain in play.
+	var a := BattleSim.create_battle_road(88, true)
+	var b := BattleSim.create_battle_road(88, true)
+	var same := true
+	for i in 700:
+		a.step()
+		b.step()
+		if a.state_hash() != b.state_hash():
+			same = false
+			break
+	check(same, "the running fight stays deterministic")
 
 
 ## Quiet variant for assertions inside loops — only failures print.

@@ -20,6 +20,9 @@ extends Node3D
 ##   --scenario=lexington      mission 1.5 opening: Parker's stand on the
 ##                             Green — hold fire, judge the moment, disperse
 ##                             or take the volley (docs/03)
+##   --scenario=battle_road    mission 1.5 third act: the running fight —
+##                             hold a wall, empty your musket into the
+##                             column, fall back to the next wall
 ##   --scenario=campaign       with --auto: sandboxed campaign film — the
 ##                             save file is never touched (demo_mode)
 ##   --campaign-seed=N         founding seed for the sandboxed campaign
@@ -119,6 +122,8 @@ func _ready() -> void:
 		_shot_max_age = 5.0  # the dark cuts faster
 	elif _scenario == "lexington":
 		sim = BattleSim.create_lexington(17750419, _auto)  # April 19, 1775
+	elif _scenario == "battle_road":
+		sim = BattleSim.create_battle_road(17750419, _auto)  # the same afternoon
 	else:
 		sim = BattleSim.create_demo(17750419, _auto, _lanes)
 		var start_range := float(String(args.get("start-range", "240")))
@@ -294,6 +299,17 @@ func _build_field() -> void:
 			Vector3(tx, 0.0, -160.0 + float(k) * 23.0 + float(h % 130) / 10.0), h + k)
 	ColonialLib.make_rail_fence(self, 29.0, -80.0, 80.0)
 	ColonialLib.make_rail_fence(self, -29.0, -80.0, 80.0)
+	# Cover bands are sim truth — draw exactly what the sim scores, so a
+	# player can read protection off the field instead of a HUD number.
+	for b in sim.terrain.bands:
+		var z: float = (float(b["y_min"]) + float(b["y_max"])) / 2.0
+		if String(b["kind"]) == "fence":
+			ColonialLib.make_rail_fence(self, 0.0, -26.0, 26.0)
+			var f := get_child(get_child_count() - 1) as Node3D
+			f.rotation.y = PI / 2.0
+			f.position.z = z
+		else:
+			ColonialLib.make_stone_wall(self, z, -26.0, 26.0, int(z) * 31 + 7)
 
 
 func _lane_x(lane: int) -> float:
@@ -683,10 +699,14 @@ func _update_hud() -> void:
 	if pc != null:
 		var hold_txt := "  hold %.1fs (bonus %.0f%%)" % [pc.present_hold, pc.hold_bonus() * 100.0] \
 			if pc.state == BattleCompany.State.PRESENTING else ""
-		lines.append("%s — %d effectives  cohesion %.0f%%  %s  fire: %s  [%s | %s]%s" % [
+		var cover := sim.terrain.cover_at(pc.pos_y)
+		var cover_txt := "  COVER: %s (%.0f%%)" % [
+			sim.terrain.kind_at(pc.pos_y), cover * 100.0] if cover > 0.0 else \
+			("  IN THE OPEN" if not sim.terrain.bands.is_empty() else "")
+		lines.append("%s — %d effectives  cohesion %.0f%%  %s  fire: %s  [%s | %s]%s%s" % [
 			pc.brigade.display_name, pc.effectives(), pc.cohesion() * 100.0,
 			_state_txt(pc), pc.fire_mode_name(),
-			_platoon_txt(pc, 0), _platoon_txt(pc, 1), hold_txt])
+			_platoon_txt(pc, 0), _platoon_txt(pc, 1), hold_txt, cover_txt])
 	if pc != null and foe != null:
 		lines.append("%s — %d effectives  cohesion %.0f%%  %s  range %d yds  smoke %.0f%%" % [
 			foe.brigade.display_name, foe.effectives(), foe.cohesion() * 100.0,

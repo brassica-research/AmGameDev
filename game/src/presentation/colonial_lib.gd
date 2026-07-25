@@ -137,8 +137,8 @@ static func make_building(parent: Node3D, prop_name: String, pos: Vector3,
 	dark.roughness = 0.25
 	var mesh_z := BoxMesh.new()
 	mesh_z.size = Vector3(0.55, 0.85, 0.06)
-	var mesh_x := BoxMesh.new()
-	mesh_x.size = Vector3(0.06, 0.85, 0.55)
+	var lit_windows: Array[Transform3D] = []
+	var dark_windows: Array[Transform3D] = []
 	var rows := clampi(int((size.y - 1.0) / 1.7), 1, 3)
 	for face in 4:
 		var along_x := face < 2                 # faces 0,1 = ±z walls
@@ -153,15 +153,31 @@ static func make_building(parent: Node3D, prop_name: String, pos: Vector3,
 				var y := 1.15 + float(r) * 1.7 + 0.42
 				if y + 0.55 > size.y:
 					continue
-				var w := MeshInstance3D.new()
-				w.mesh = mesh_z if along_x else mesh_x
-				w.material_override = lit \
-					if _hash(h + face * 31 + r * 13 + cidx * 7) % 100 < 28 else dark
-				if along_x:
-					w.position = Vector3(along, y, face_sign * (size.z / 2.0 + 0.035))
+				var at := Vector3(along, y, face_sign * (size.z / 2.0 + 0.035)) \
+					if along_x else Vector3(face_sign * (size.x / 2.0 + 0.035), y, along)
+				var xf := Transform3D(Basis.IDENTITY if along_x
+					else Basis(Vector3.UP, PI / 2.0), at)
+				if _hash(h + face * 31 + r * 13 + cidx * 7) % 100 < 28:
+					lit_windows.append(xf)
 				else:
-					w.position = Vector3(face_sign * (size.x / 2.0 + 0.035), y, along)
-				root.add_child(w)
+					dark_windows.append(xf)
+	# Windows as two MultiMeshes, not forty nodes: a town of fifteen
+	# houses was ~900 draw calls, which software GL felt keenly — the
+	# Boston capture ran 2.5x slower per frame than the battlefield.
+	for pair in [[lit_windows, lit], [dark_windows, dark]]:
+		var xforms: Array = pair[0]
+		if xforms.is_empty():
+			continue
+		var wmm := MultiMesh.new()
+		wmm.transform_format = MultiMesh.TRANSFORM_3D
+		wmm.mesh = mesh_z
+		wmm.instance_count = xforms.size()
+		for i in xforms.size():
+			wmm.set_instance_transform(i, xforms[i])
+		var wmmi := MultiMeshInstance3D.new()
+		wmmi.multimesh = wmm
+		wmmi.material_override = pair[1]
+		root.add_child(wmmi)
 	# Door on the -z face, off-center by taste of the hash.
 	var door := MeshInstance3D.new()
 	var door_mesh := BoxMesh.new()

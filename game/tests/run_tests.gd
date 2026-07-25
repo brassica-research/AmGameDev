@@ -660,7 +660,17 @@ func _test_art_form_pass() -> void:
 		Vector3(12, 8, 9), Color(0.24, 0.23, 0.27))
 	check(stage.get_child_count() == 1, "the building hangs off the stage")
 	var parts := (stage.get_child(0) as Node3D).get_child_count()
-	check(parts >= 8, "walls, windows, door, roof, chimney (%d parts)" % parts)
+	check(parts >= 6, "walls, windows, door, roof, chimney (%d parts)" % parts)
+	# Windows are batched into MultiMeshes — a fifteen-house town was
+	# ~900 draw calls before, which software GL felt keenly.
+	var batched := 0
+	var lit_panes := 0
+	for child in (stage.get_child(0) as Node3D).get_children():
+		if child is MultiMeshInstance3D:
+			batched += 1
+			lit_panes += (child as MultiMeshInstance3D).multimesh.instance_count
+	check(batched > 0 and batched <= 2, "windows batch into at most two draw calls")
+	check(lit_panes >= 8, "the house has windows (%d panes)" % lit_panes)
 	var ground: StandardMaterial3D = col_lib.ground_material("snow")
 	check(ground.albedo_texture != null and ground.uv1_triplanar, "snow ground is textured")
 	stage.free()

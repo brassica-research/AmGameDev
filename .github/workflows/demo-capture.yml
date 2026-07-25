@@ -78,7 +78,7 @@ jobs:
             --audio-driver Dummy \
             --resolution 960x540 \
             --fixed-fps 24 --write-movie /tmp/world.avi \
-            -- --auto --world=boston_1775 --lowfx --time-scale=2.0 --quit-after=50
+            -- --auto --world=boston_1775 --lowfx --time-scale=2.0 --quit-after=100
 
       - name: Encode mp4 and stills
         run: |

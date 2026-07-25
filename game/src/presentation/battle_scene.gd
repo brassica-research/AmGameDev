@@ -17,6 +17,9 @@ extends Node3D
 ##   --auto                    player company is AI-driven (auto-battle)
 ##   --scenario=field          the ephemeral demo battle (no persistence)
 ##   --scenario=night_assault  bayonets-only night storm (Stony Point pattern)
+##   --scenario=lexington      mission 1.5 opening: Parker's stand on the
+##                             Green — hold fire, judge the moment, disperse
+##                             or take the volley (docs/03)
 ##   --scenario=campaign       with --auto: sandboxed campaign film — the
 ##                             save file is never touched (demo_mode)
 ##   --campaign-seed=N         founding seed for the sandboxed campaign
@@ -30,6 +33,16 @@ const PLAYER_ID := "continentals"
 const FILES := 20          # men per rank in the grey-box line
 const FILE_SPACING := 0.75
 const RANK_SPACING := 0.9
+
+const FigureLib := preload("res://src/presentation/figure_lib.gd")
+const ColonialLib := preload("res://src/presentation/colonial_lib.gd")
+
+# The form-pass wardrobe (docs/04): the King's regulars in red; the
+# American line in blue regimentals only once it has drilled into one —
+# a militia company fights in its own brown coats and round hats.
+const COAT_BRITISH := Color(0.55, 0.12, 0.11)
+const COAT_CONTINENTAL := Color(0.17, 0.21, 0.44)
+const COAT_MILITIA := Color(0.33, 0.26, 0.18)
 
 # Cinematic shots
 const SHOT_AERIAL := 0
@@ -68,6 +81,8 @@ var _focus_lane := 0
 
 var _mm_by_id: Dictionary = {}        # company id -> MultiMeshInstance3D
 var _mat_by_id: Dictionary = {}       # company id -> StandardMaterial3D
+var _coat_by_id: Dictionary = {}      # company id -> coat color (for the fallen)
+var _fallen_mesh_by_id: Dictionary = {}  # built once; casualties share it
 var _last_effectives: Dictionary = {}
 var _prev_shots: Dictionary = {}      # company id -> [shots p0, shots p1]
 var _fallen_parent: Node3D
@@ -102,6 +117,8 @@ func _ready() -> void:
 	elif _scenario == "night_assault":
 		sim = BattleSim.create_night_assault(17790716, _auto, _lanes)  # July 16, 1779
 		_shot_max_age = 5.0  # the dark cuts faster
+	elif _scenario == "lexington":
+		sim = BattleSim.create_lexington(17750419, _auto)  # April 19, 1775
 	else:
 		sim = BattleSim.create_demo(17750419, _auto, _lanes)
 		var start_range := float(String(args.get("start-range", "240")))
@@ -116,7 +133,7 @@ func _ready() -> void:
 	_build_environment()
 	_build_field()
 	for c in sim.companies:
-		var color := Color(0.16, 0.24, 0.52) if c.side == 0 else Color(0.58, 0.13, 0.13)
+		var color := COAT_CONTINENTAL if c.side == 0 else COAT_BRITISH
 		if c.lane == 1:
 			color = color.lightened(0.12)
 		_build_company_visual(c, color)
@@ -265,11 +282,18 @@ func _build_field() -> void:
 	var ground := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(120.0, 400.0)
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.11, 0.13, 0.10) if sim.night else Color(0.26, 0.30, 0.20)
-	plane.material = mat
+	plane.material = ColonialLib.ground_material("night_field" if sim.night else "field")
 	ground.mesh = plane
 	add_child(ground)
+	# Field dressing, presentation-only: bare trees beyond the flanks and
+	# a split-rail fence line either side of the fighting ground.
+	for k in 14:
+		var h := (k * 2654435761) % 1000
+		var tx := (32.0 + float(h % 80) / 10.0) * (1.0 if k % 2 == 0 else -1.0)
+		ColonialLib.make_bare_tree(self,
+			Vector3(tx, 0.0, -160.0 + float(k) * 23.0 + float(h % 130) / 10.0), h + k)
+	ColonialLib.make_rail_fence(self, 29.0, -80.0, 80.0)
+	ColonialLib.make_rail_fence(self, -29.0, -80.0, 80.0)
 
 
 func _lane_x(lane: int) -> float:
@@ -279,25 +303,27 @@ func _lane_x(lane: int) -> float:
 
 
 func _build_company_visual(c: BattleCompany, color: Color) -> void:
-	var box := BoxMesh.new()
-	box.size = Vector3(0.45, 1.7, 0.45)
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color.WHITE
-	mat.vertex_color_use_as_albedo = true
-	box.material = mat
+	# Dress the company: colors are baked into the figure mesh as vertex
+	# colors, so the whole company is still one draw call. The material
+	# stays white so the broken/eliminated fade below keeps working.
+	var mesh: ArrayMesh
+	if c.side == 0 and c.drill() == 0:
+		mesh = FigureLib.build_militiaman(COAT_MILITIA.lerp(color, 0.15))
+	else:
+		mesh = FigureLib.build_soldier(color)
+	var mat := FigureLib.figure_material()
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_colors = true
-	mm.mesh = box
+	mm.mesh = mesh
 	mm.instance_count = c.brigade.soldiers.size()
-	for i in mm.instance_count:
-		var v := 0.86 + 0.28 * (float((i * 73856093) % 97) / 97.0)
-		mm.set_instance_color(i, Color(color.r * v, color.g * v, color.b * v))
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
+	mmi.material_override = mat
 	add_child(mmi)
 	_mm_by_id[c.id] = mmi
 	_mat_by_id[c.id] = mat
+	_coat_by_id[c.id] = COAT_MILITIA if (c.side == 0 and c.drill() == 0) else color
+	_fallen_mesh_by_id[c.id] = FigureLib.build_fallen(_coat_by_id[c.id])
 
 
 func _build_smoke() -> void:
@@ -370,13 +396,16 @@ func _update_company_visual(c: BattleCompany) -> void:
 			var h2 := float((i * 1103515245 + 12345) % 1000) / 1000.0
 			# In the scrum the SIM owns every man's position — surging,
 			# pausing to fire, or locked in the press (playtest #2).
+			var body_y := 0.93 + h2 * 0.13   # no two men the same height
+			var body_w := 0.95 + h1 * 0.10
+			var body_scale := Vector3(body_w, body_y, body_w)
 			if c.scrum_active and i < c.man_x.size():
 				var sx := lx + lerpf(c.man_prev_x[i], c.man_x[i], clock.alpha())
 				var sz := lerpf(c.man_prev_y[i], c.man_y[i], clock.alpha())
 				var sbob := sin(_anim_time * 11.0 + float(i) * 1.7) * 0.07
 				mm.set_instance_transform(i, Transform3D(
-					Basis.IDENTITY.rotated(Vector3.UP, (h2 - 0.5) * 1.6),
-					Vector3(sx, 0.85 + sbob, sz)))
+					Basis.IDENTITY.rotated(Vector3.UP, (h2 - 0.5) * 1.6).scaled(body_scale),
+					Vector3(sx, 0.85 * body_y + sbob, sz)))
 				continue
 			var file := i % FILES
 			var rank := floori(float(i) / float(FILES))
@@ -400,9 +429,12 @@ func _update_company_visual(c: BattleCompany) -> void:
 				x += cos(ang) * flight
 				zz += sin(ang) * flight * 0.6
 			var bob := sin(_anim_time * 9.0 + float(i) * 1.7) * (0.06 if moving else 0.02)
+			# The line faces the enemy; each man stands a touch off-square.
+			var facing := 0.0 if c.facing() > 0.0 else PI
 			mm.set_instance_transform(i, Transform3D(
-				Basis.IDENTITY.rotated(Vector3.UP, (h2 - 0.5) * 0.5 * disorder),
-				Vector3(x, 0.85 + bob, zz)))
+				Basis.IDENTITY.rotated(Vector3.UP,
+					facing + (h2 - 0.5) * 0.5 * disorder).scaled(body_scale),
+				Vector3(x, 0.85 * body_y + bob, zz)))
 		else:
 			mm.set_instance_transform(i, hidden)
 	var mat: StandardMaterial3D = _mat_by_id[c.id]
@@ -421,16 +453,12 @@ func _spawn_fallen(c: BattleCompany) -> void:
 		var idx := prev - 1 - k
 		var h := (idx * 2654435761) % 1000
 		var mi := MeshInstance3D.new()
-		var box := BoxMesh.new()
-		box.size = Vector3(0.45, 0.14, 1.6)
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(0.30, 0.17, 0.15)
-		box.material = mat
-		mi.mesh = box
+		mi.mesh = _fallen_mesh_by_id[c.id]
+		mi.material_override = FigureLib.figure_material()
 		var x := lx + (float(idx % FILES) - float(FILES) / 2.0 + 0.5) * FILE_SPACING
 		x += (float(h % 100) / 100.0 - 0.5) * 0.6
 		var zj := (float((h / 100) % 100) / 100.0 - 0.5) * 0.9
-		mi.position = Vector3(x, 0.08,
+		mi.position = Vector3(x, 0.02,
 			z - float(floori(float(idx) / float(FILES))) * RANK_SPACING * c.facing() + zj)
 		mi.rotation.y = (float(h % 63) / 63.0 - 0.5) * 1.3
 		_fallen_parent.add_child(mi)
@@ -623,7 +651,7 @@ func _update_hud() -> void:
 	var pc := sim.get_company(PLAYER_ID)
 	var foe := sim.nearest_enemy(pc) if pc != null else null
 	var lines: Array[String] = []
-	lines.append("LET TYRANTS SHAKE — M1 volley prototype")
+	lines.append("LET TYRANTS SHAKE — M2 vertical slice")
 	lines.append("[1] advance  [2] halt  [3] withdraw   [SPACE hold] present -> [release] FIRE   [F] volley/at-will  [C] charge  [R] rally  [V] camera  [wheel] zoom  [ENTER] restart")
 	if sim.night:
 		var alarm := "THE ALARM IS RAISED" if sim.alarm_raised else "silence — the columns are undiscovered"

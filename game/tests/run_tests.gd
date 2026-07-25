@@ -31,6 +31,9 @@ func _initialize() -> void:
 	_test_player_command_sequences()
 	_test_close_combat_scrum()
 	_test_scrum_regroup()
+	_test_king_street_cutscene()
+	_test_art_form_pass()
+	_test_lexington_green()
 	_test_campaign_three_battles()
 	print("")
 	print("%d checks, %d failures" % [checks, failures])
@@ -571,6 +574,169 @@ func _test_scrum_regroup() -> void:
 		sim.step()
 		steps += 1
 	check(sim.over, "the battle still reaches a verdict after the regroup")
+
+
+## M2 deliverable: the King Street cutscene plays end-to-end through
+## the JSON system — schema sound, sources cited, codex link resolving,
+## and the CutscenePlayer streaming every cue in order.
+func _test_king_street_cutscene() -> void:
+	print("\n-- King Street: the opening scene, end to end")
+	var file := FileAccess.open("res://data/cutscenes/king_street.json", FileAccess.READ)
+	var data: Dictionary = JSON.parse_string(file.get_as_text())
+	check(not (data.get("sources", []) as Array).is_empty(), "the scene cites its sources")
+	var events: Array = data.get("events", [])
+	var sorted_ok := true
+	var known := ["caption", "codex", "camera", "actor", "audio"]
+	var last_t := -1.0
+	for e in events:
+		if float(e.get("t", 0.0)) < last_t:
+			sorted_ok = false
+		last_t = float(e.get("t", 0.0))
+		check_quiet(known.has(String(e.get("track", ""))), "unknown track: %s" % e)
+		if String(e.get("track", "")) == "caption":
+			check_quiet(String(e.get("text", "")) != "", "caption without text at t=%s" % e.get("t"))
+	check(sorted_ok, "the timeline is ordered")
+	for e in events:
+		if String(e.get("track", "")) == "codex":
+			var entry := String(e.get("entry", ""))
+			var codex_path := "res://data/codex/%s.json" % entry.trim_prefix("codex_")
+			check(FileAccess.file_exists(codex_path), "codex link resolves: %s" % entry)
+	# Drive the player headless: every cue must stream, then finish.
+	var cp := CutscenePlayer.new()
+	var counts := [0, 0, 0, 0, 0]  # captions, codex, camera, actor, done
+	cp.caption_shown.connect(func(_t: String, _a: String) -> void: counts[0] += 1)
+	cp.codex_linked.connect(func(_e: String) -> void: counts[1] += 1)
+	cp.camera_cue.connect(func(_e: Dictionary) -> void: counts[2] += 1)
+	cp.actor_cue.connect(func(_e: Dictionary) -> void: counts[3] += 1)
+	cp.finished.connect(func(_i: String) -> void: counts[4] += 1)
+	cp.play_file("res://data/cutscenes/king_street.json")
+	for i in 320:
+		cp._process(0.5)
+	check(counts[0] >= 12, "the captions stream (%d shown)" % counts[0])
+	check(counts[1] == 1, "the codex entry fires once")
+	check(counts[2] >= 5, "the camera cuts (%d cues)" % counts[2])
+	check(counts[3] >= 6, "the actors move (%d cues)" % counts[3])
+	check(counts[4] == 1, "the scene finishes")
+	cp.free()
+
+
+## M2 art form pass: the procedural figure and scenery builders must
+## produce real geometry headless, and every presentation script must
+## still parse (load() returning null = a syntax error CI should catch).
+func _test_art_form_pass() -> void:
+	print("\n-- Art form pass: figures and scenery build headless")
+	# Loaded at runtime (not preload), so every call on these is dynamic —
+	# keep them Variant and type each result explicitly.
+	var fig_lib: Variant = load("res://src/presentation/figure_lib.gd")
+	var col_lib: Variant = load("res://src/presentation/colonial_lib.gd")
+	check(fig_lib != null, "figure_lib parses")
+	check(col_lib != null, "colonial_lib parses")
+	if fig_lib == null or col_lib == null:
+		return
+	for kind in [["soldier", fig_lib.build_soldier(Color(0.55, 0.12, 0.11))],
+			["militiaman", fig_lib.build_militiaman(Color(0.33, 0.26, 0.18))],
+			["civilian", fig_lib.build_civilian(Color(0.30, 0.30, 0.36))],
+			["fallen", fig_lib.build_fallen(Color(0.3, 0.3, 0.3))]]:
+		var mesh: ArrayMesh = kind[1]
+		check(mesh != null and mesh.get_surface_count() == 1, "%s mesh commits" % kind[0])
+		var arrays := mesh.surface_get_arrays(0)
+		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+		check(verts.size() >= 300, "%s has a body (%d verts)" % [kind[0], verts.size()])
+		check(colors.size() == verts.size(), "%s colors are baked per vertex" % kind[0])
+	# A soldier must carry his musket above the hat — the silhouette test.
+	var soldier: ArrayMesh = fig_lib.build_soldier(Color(0.5, 0.1, 0.1))
+	var top := 0.0
+	for v in (soldier.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array):
+		top = maxf(top, v.y)
+	check(top > 1.0, "the musket rises above the ranks (top %.2f)" % top)
+	# A building gets walls, windows, a roof, and at least one chimney.
+	var stage := Node3D.new()
+	col_lib.make_building(stage, "custom_house", Vector3(8, 0, 8),
+		Vector3(12, 8, 9), Color(0.24, 0.23, 0.27))
+	check(stage.get_child_count() == 1, "the building hangs off the stage")
+	var parts := (stage.get_child(0) as Node3D).get_child_count()
+	check(parts >= 8, "walls, windows, door, roof, chimney (%d parts)" % parts)
+	var ground: StandardMaterial3D = col_lib.ground_material("snow")
+	check(ground.albedo_texture != null and ground.uv1_triplanar, "snow ground is textured")
+	stage.free()
+	# CC0 shim: with packs unfetched the tree must fall back to procedural,
+	# and with packs fetched it must still build exactly one node.
+	var grove := Node3D.new()
+	col_lib.make_bare_tree(grove, Vector3(5, 0, 5), 42)
+	check(grove.get_child_count() == 1, "bare tree builds with or without third-party packs")
+	grove.free()
+	# The presentation layer still parses — art wiring touched all of it.
+	for path in ["res://src/presentation/battle_scene.gd",
+			"res://src/presentation/cutscene_scene.gd",
+			"res://src/presentation/camp_scene.gd"]:
+		check(load(path) != null, "parses: %s" % path)
+
+
+## Mission 1.5 opening (docs/03): the Lexington script is part of the
+## sim, so both of its endings must be deterministic and honest — the
+## shot belongs to no musket, dispersing in time is bloodless, and
+## standing means the volley.
+func _test_lexington_green() -> void:
+	print("\n-- Lexington Green: the nineteenth of April")
+	# Capture 15 regression: nerve must scale with the butcher's bill.
+	check(MoraleModel.casualty_shock(4, 38, 0) > MoraleModel.casualty_shock(4, 380, 0),
+		"casualty shock is proportional to the company, not flat")
+	check(MoraleModel.casualty_shock(19, 38, 0) > 0.5,
+		"losing half the line shatters a green company's nerve")
+	var sim := BattleSim.create_lexington(19775, true)
+	var militia := sim.get_company("continentals")
+	check(militia != null and militia.hold_fire, "Parker's order stands: hold your fire")
+	var guard := 0
+	while sim.first_shot_tick < 0 and not sim.over and guard < 8000:
+		sim.step()
+		guard += 1
+	check(sim.first_shot_tick > 0, "the shot rings out")
+	check(militia.platoon_shots[0] + militia.platoon_shots[1] == 0,
+		"not a militia musket fired before it")
+	check(not militia.hold_fire, "after the shot, the order is moot")
+	guard = 0
+	var broke := false
+	while not sim.over and guard < 12000:
+		sim.step()
+		if militia.state == BattleCompany.State.BROKEN:
+			broke = true
+		guard += 1
+	check(sim.over, "the Green is decided")
+	check(sim.winner_side == 1, "history holds: the regulars clear the Green")
+	check(not sim.dispersed, "standing meant the volley")
+	check(militia.effectives() < 38, "and the volley cost men")
+	check(sim.tick < BattleSim.HARD_END_TICK, "decided by arms, not the attrition clock")
+	check(broke, "the company breaks and scatters — no one rallies them back")
+	check(militia.effectives() > 2,
+		"the company BREAKS before it is annihilated (capture 15 regression)")
+	# Deterministic despite the script: same seed, same battle, tick for tick.
+	var a := BattleSim.create_lexington(4444, true)
+	var b := BattleSim.create_lexington(4444, true)
+	var traces_match := true
+	for i in 900:
+		a.step()
+		b.step()
+		if a.state_hash() != b.state_hash():
+			traces_match = false
+			break
+	check(traces_match, "the scripted scenario stays deterministic")
+	# The bloodless branch: withdraw at the demand and keep every man.
+	var s2 := BattleSim.create_lexington(19775, false)
+	guard = 0
+	while s2.script_stage < 2 and guard < 8000:
+		s2.step()
+		guard += 1
+	check(s2.script_stage == 2, "the dispersal demand is made")
+	s2.bus.submit(s2.tick + 1, "continentals", "withdraw")
+	guard = 0
+	while not s2.over and guard < 8000:
+		s2.step()
+		guard += 1
+	check(s2.over and s2.dispersed, "dispersing in time ends it without a volley")
+	check(s2.first_shot_tick < 0, "no shot was ever fired")
+	var m2 := s2.get_company("continentals")
+	check(m2.effectives() == 38, "every man walks off the Green")
 
 
 ## Quiet variant for assertions inside loops — only failures print.

@@ -33,6 +33,21 @@ const DRAIN := {
 const WAVER_THRESHOLD := 0.45
 const BREAK_THRESHOLD := 0.25
 
+## The butcher's-bill shock: losing men drains nerve in PROPORTION to
+## how many stood beside you. Capture 15 finding (Lexington film): the
+## flat per-man drip let 38 militiamen stand to the last two at full
+## cohesion. Losing 5 of 38 in one exchange should shake a green
+## company toward WAVER on its own; the same 5 out of a full battalion
+## barely registers.
+const CASUALTY_SHOCK_SCALE := 1.4
+
+static func casualty_shock(count: int, effectives_before: int, drill_level: int) -> float:
+	if count <= 0 or effectives_before <= 0:
+		return 0.0
+	return CASUALTY_SHOCK_SCALE * float(count) / float(effectives_before) \
+		* (1.0 - 0.15 * float(drill_level))
+
+
 ## Drill dampens shock: veterans have seen it before.
 static func drain_for(event: int, drill_level: int) -> float:
 	var base: float = DRAIN.get(event, 0.0)

@@ -33,7 +33,20 @@ Tuning knobs live in `volley.gd`, `morale.gd`, `formation.gd`.
 Mission 1.5 (Lexington Green → North Bridge → Battle Road) at target
 quality:
 - Full art style proof (realistic look, smoke, natural light)
-- One authored cutscene ("King Street") through the JSON cutscene system
+  - ✅ Form pass (playtest directive: "people and scenery should look
+    like people and scenery"): procedural period figures — tricorn/
+    round hat, coat skirts, crossbelts, shouldered musket, baked vertex
+    colors, one draw call per company — plus colonial buildings (brick/
+    clapboard, candlelit windows, snow-capped roofs, chimneys), textured
+    ground, fences, bare trees, the moon (`src/presentation/figure_lib.gd`,
+    `colonial_lib.gd`). Militia fight in brown coats and round hats;
+    regulars in regimentals — drill is visible at a glance. Final art
+    replaces these meshes at look-dev; call sites keep the contract.
+- ✅ One authored cutscene ("King Street") through the JSON cutscene
+  system — full trial-testimony script, data-driven grey-box staging
+  (props/groups/snow from the scene JSON), camera/actor/caption cues
+  streaming end-to-end, codex link firing. Final art replaces the
+  boxes at look-dev; the JSON never changes.
 - ✅ Muster roll v1 (landed early, during M1): named persistent
   soldiers with towns/ages/traits, permadeath into the memorial book,
   wound recovery, battle-earned veterancy that drives company drill,
@@ -46,6 +59,15 @@ quality:
 - ✅ Camp screen v1 (also early): the encampment hub as a real scene —
   paged muster-roll review, fortnight postures (drill / forage / rest),
   the bounty decision, and the memorial book, between every battle
+- ✅ Lexington Green opening action (mission 1.5, first beat): the
+  scripted stand as sim — Parker's hold-fire order enforced through the
+  CommandBus, the dispersal demand, the standoff clock that pauses
+  while you withdraw, the shot no musket owns (`first_shot_tick`, never
+  attributed), the regulars' discipline snapping, and both endings
+  honest: disperse in time and every man walks off the Green; stand and
+  take the volley. `--scenario=lexington`; both branches + determinism
+  in CI. Still to come for the full slice: North Bridge, Battle Road,
+  terrain (walls/fences as cover), mission chaining.
 - Field Journal codex with real citations end-to-end
 - Sim-level individual movement (playtest directives): ✅ v1 landed as
   the close-combat scrum — inside 25 yds every man surges, fires, or

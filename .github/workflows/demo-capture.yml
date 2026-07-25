@@ -62,7 +62,7 @@ jobs:
             --audio-driver Dummy \
             --resolution 1280x720 \
             --fixed-fps 30 --write-movie /tmp/battle.avi \
-            -- --auto --scenario=battle_road --time-scale=1.5 --quit-after=220
+            -- --auto --scenario=lexington --time-scale=1.4 --quit-after=200
 
       - name: Encode mp4 and stills
         run: |

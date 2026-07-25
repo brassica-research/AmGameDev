@@ -31,6 +31,24 @@ var _failsafe_fired := false
 var night := false
 var alarm_raised := false
 
+## Weather: "clear" | "overcast" | "rain". Rain is not decoration — a
+## flintlock in a downpour is a pike. At the Battle of the Clouds
+## (Sept 16, 1777) a storm ruined 400,000 cartridges and ended the
+## action without a fight; damp powder belongs in the sim, not the sky.
+var weather := "clear"
+
+## Fraction of an aimed discharge lost to damp priming and misfires.
+func misfire_loss() -> float:
+	match weather:
+		"rain": return 0.45
+		"overcast": return 0.05
+		_: return 0.0
+
+
+## Reload time multiplier — wet hands, wet cartridges, fouled pans.
+func reload_penalty() -> float:
+	return 1.35 if weather == "rain" else 1.0
+
 ## Scripted-scenario state (docs/03 mission 1.5 "Nineteenth of April").
 ## The script is part of the sim — it submits through the CommandBus on
 ## fixed ticks, so scripted battles stay a pure function of the seed.
@@ -376,6 +394,7 @@ func _fire_platoon(c: BattleCompany, p: int, target: BattleCompany,
 	var dist := absf(target.pos_y - c.pos_y)
 	var smoke_v := smoke.sample_between(c.pos_y, target.pos_y)
 	var disc := discipline * (0.6 if night else 1.0)  # firing at shapes in the dark
+	disc *= 1.0 - misfire_loss()                      # damp powder, flashes in the pan
 	var hits := VolleyModel.resolve(shooters, dist, smoke_v,
 		c.cohesion(), c.drill(), hold_bonus, rng, disc,
 		terrain.fire_multiplier(target.pos_y))
@@ -385,7 +404,8 @@ func _fire_platoon(c: BattleCompany, p: int, target: BattleCompany,
 		target.brigade.take_morale_event(morale_event)
 	smoke.deposit(c.pos_y + c.facing() * 3.0, 0.35 * float(shooters) / 40.0)
 	c.platoon_loaded[p] = false
-	c.platoon_reload[p] = Formation.RELOAD_TIME[c.drill()] * rng.randf_range(0.9, 1.2)
+	c.platoon_reload[p] = Formation.RELOAD_TIME[c.drill()] \
+		* rng.randf_range(0.9, 1.2) * reload_penalty()
 	c.platoon_shots[p] += 1
 	if c.platoon_first_fire_tick[p] < 0:
 		c.platoon_first_fire_tick[p] = tick

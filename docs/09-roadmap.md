@@ -42,6 +42,22 @@ quality:
     `colonial_lib.gd`). Militia fight in brown coats and round hats;
     regulars in regimentals — drill is visible at a glance. Final art
     replaces these meshes at look-dev; call sites keep the contract.
+  - ✅ Motion pass: figures POSE. A MultiMesh can't skin a skeleton, so
+    each company builds a pose set (stand / march A / march B / present
+    / fire / reload / charge) and every frame sorts each man into the
+    bucket his sim state and his own gait phase call for — marching
+    legs and counter-swinging arms, muskets coming down to the present,
+    ramrods working in the platoon that just fired while the other
+    stands ready, chargers leaning in with the bayonet level, routers
+    facing away. Skin tones vary across the ranks (docs/08 §4: the
+    Continental line was integrated, and should look it).
+  - ✅ Weather + light as scene clock: per-scenario hour and sky
+    (Lexington at first light with ground mist, the Battle Road through
+    a high afternoon, Stony Point under a quarter moon), depth fog for
+    atmospheric perspective, and RAIN — which is sim truth, not a
+    filter: damp priming costs 45% of an aimed discharge and reloading
+    runs a third slower (the Battle of the Clouds, Sept 1777, ruined
+    400,000 cartridges and ended without a fight). `--weather=rain`.
 - ✅ One authored cutscene ("King Street") through the JSON cutscene
   system — full trial-testimony script, data-driven grey-box staging
   (props/groups/snow from the scene JSON), camera/actor/caption cues

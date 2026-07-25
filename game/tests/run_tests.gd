@@ -35,6 +35,7 @@ func _initialize() -> void:
 	_test_art_form_pass()
 	_test_lexington_green()
 	_test_terrain_and_battle_road()
+	_test_weather()
 	_test_campaign_three_battles()
 	print("")
 	print("%d checks, %d failures" % [checks, failures])
@@ -637,7 +638,8 @@ func _test_art_form_pass() -> void:
 	for kind in [["soldier", fig_lib.build_soldier(Color(0.55, 0.12, 0.11))],
 			["militiaman", fig_lib.build_militiaman(Color(0.33, 0.26, 0.18))],
 			["civilian", fig_lib.build_civilian(Color(0.30, 0.30, 0.36))],
-			["fallen", fig_lib.build_fallen(Color(0.3, 0.3, 0.3))]]:
+			["fallen", fig_lib.build_fallen(Color(0.3, 0.3, 0.3))],
+			["charging soldier", fig_lib.build_soldier(Color(0.5, 0.1, 0.1), 6)]]:
 		var mesh: ArrayMesh = kind[1]
 		check(mesh != null and mesh.get_surface_count() == 1, "%s mesh commits" % kind[0])
 		var arrays := mesh.surface_get_arrays(0)
@@ -661,6 +663,28 @@ func _test_art_form_pass() -> void:
 	var ground: StandardMaterial3D = col_lib.ground_material("snow")
 	check(ground.albedo_texture != null and ground.uv1_triplanar, "snow ground is textured")
 	stage.free()
+	# Poses: the whole set must build, and the stances must actually
+	# differ — a marching man's feet are not a standing man's.
+	var poses: Array = fig_lib.build_pose_set(Color(0.5, 0.1, 0.1), "soldier")
+	check(poses.size() == fig_lib.POSE_COUNT, "every pose in the set builds")
+	var footprints: Array[float] = []
+	for p in poses:
+		var lo := 99.0
+		var hi := -99.0
+		for v in ((p as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array):
+			lo = minf(lo, v.z)
+			hi = maxf(hi, v.z)
+		footprints.append(hi - lo)
+	check(footprints[fig_lib.Pose.MARCH_A] > footprints[fig_lib.Pose.STAND],
+		"a marching man covers more ground than a standing one")
+	check(footprints[fig_lib.Pose.CHARGE] > footprints[fig_lib.Pose.MARCH_A],
+		"a charging man is at full stride")
+	check(footprints[fig_lib.Pose.PRESENT] > footprints[fig_lib.Pose.STAND],
+		"presenting puts the musket out front")
+	var tones := {}
+	for i in 40:
+		tones[fig_lib.skin_for(i, 3)] = true
+	check(tones.size() >= 3, "the ranks are not one man repeated (%d tones)" % tones.size())
 	# CC0 shim: with packs unfetched the tree must fall back to procedural,
 	# and with packs fetched it must still build exactly one node.
 	var grove := Node3D.new()
@@ -787,6 +811,46 @@ func _test_terrain_and_battle_road() -> void:
 			same = false
 			break
 	check(same, "the running fight stays deterministic")
+
+
+## Weather is sim truth, not a filter (docs/06): a flintlock in a
+## downpour is a pike. Battle of the Clouds, Sept 16 1777 — a storm
+## ruined 400,000 cartridges and ended the action without a fight.
+func _test_weather() -> void:
+	print("\n-- Weather: damp powder is a mechanic, not a filter")
+	var clear := BattleSim.create_demo(2024, true)
+	var wet := BattleSim.create_demo(2024, true)
+	wet.weather = "rain"
+	check(wet.misfire_loss() > 0.3, "rain ruins a large share of the priming")
+	check(clear.misfire_loss() == 0.0, "clear weather costs nothing")
+	check(wet.reload_penalty() > clear.reload_penalty(), "wet hands reload slower")
+	# Same seed, same commands, one difference: the sky. The rain-soaked
+	# field must be measurably less lethal over the same span.
+	for i in 2400:
+		clear.step()
+		wet.step()
+	var clear_down := 0
+	var wet_down := 0
+	for c in clear.companies:
+		clear_down += c.brigade.soldiers.size() - c.effectives()
+	for c in wet.companies:
+		wet_down += c.brigade.soldiers.size() - c.effectives()
+	check(wet_down < clear_down,
+		"the storm costs fewer men than the clear day (%d vs %d)" % [wet_down, clear_down])
+	check(wet.state_hash() != clear.state_hash(), "weather reaches the sim state")
+	# And it stays deterministic.
+	var a := BattleSim.create_demo(55, true)
+	var b := BattleSim.create_demo(55, true)
+	a.weather = "rain"
+	b.weather = "rain"
+	var same := true
+	for i in 600:
+		a.step()
+		b.step()
+		if a.state_hash() != b.state_hash():
+			same = false
+			break
+	check(same, "a rainy battle is as deterministic as a dry one")
 
 
 ## Quiet variant for assertions inside loops — only failures print.

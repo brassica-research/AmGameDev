@@ -143,17 +143,11 @@ func _make_group(g: Dictionary) -> void:
 	var who := String(g.get("who", "group"))
 	var color: Array = g.get("color", [0.3, 0.3, 0.3])
 	var coat := Color(color[0], color[1], color[2])
-	var mesh: ArrayMesh
-	match String(g.get("kind", "civilian")):
-		"soldier":
-			mesh = FigureLib.build_soldier(coat)
-		"militia":
-			mesh = FigureLib.build_militiaman(coat)
-		_:
-			mesh = FigureLib.build_civilian(coat)
+	var kind := String(g.get("kind", "civilian"))
+	var poses := FigureLib.build_pose_set(coat, kind, FigureLib.skin_for(absi(who.hash())))
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = mesh
+	mm.mesh = poses[FigureLib.Pose.STAND]
 	mm.instance_count = 96  # capacity; visible count animates
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
@@ -162,6 +156,7 @@ func _make_group(g: Dictionary) -> void:
 	var pos: Array = g.get("pos", [0, 0])
 	_groups[who] = {
 		"mmi": mmi,
+		"poses": poses,
 		"coat": coat,
 		"pos": Vector2(pos[0], pos[1]),
 		"move_from": Vector2(pos[0], pos[1]),
@@ -267,6 +262,16 @@ func _on_actor(event: Dictionary) -> void:
 			var at2: Array = event.get("at", [0, 0])
 			for k in int(event.get("shots", 1)):
 				_spawn_flash(Vector3(at2[0] + float(k) * 0.7 - 1.4, 1.35, at2[1]))
+		"pose":
+			# Swap a whole group's stance: the party comes to the present,
+			# the crowd stands, the guard shoulders arms again.
+			if _groups.has(who):
+				var g: Dictionary = _groups[who]
+				var names := ["stand", "march_a", "march_b", "present", "fire", "reload", "charge"]
+				var idx := names.find(String(event.get("pose", "stand")))
+				var set: Array[ArrayMesh] = g["poses"]
+				if idx >= 0 and idx < set.size():
+					((g["mmi"] as MultiMeshInstance3D).multimesh as MultiMesh).mesh = set[idx]
 		"dim":
 			_env_light.light_energy = float(event.get("energy", 0.4))
 

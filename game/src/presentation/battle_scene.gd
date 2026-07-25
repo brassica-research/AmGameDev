@@ -27,6 +27,7 @@ extends Node3D
 ##                             save file is never touched (demo_mode)
 ##   --campaign-seed=N         founding seed for the sandboxed campaign
 ##   --battles=N               auto-campaign: quit after N battles
+##   --weather=rain            damp powder: misfires, slow reloads, dark sky
 ##   --time-scale=X            speed the film up (Engine.time_scale)
 ##   --lanes=2                 two engagement lanes (four companies)
 ##   --start-range=N           opening distance in yards (field scenario only)
@@ -43,6 +44,7 @@ const ColonialLib := preload("res://src/presentation/colonial_lib.gd")
 # The form-pass wardrobe (docs/04): the King's regulars in red; the
 # American line in blue regimentals only once it has drilled into one —
 # a militia company fights in its own brown coats and round hats.
+const RAIN_COUNT := 900
 const COAT_BRITISH := Color(0.55, 0.12, 0.11)
 const COAT_CONTINENTAL := Color(0.17, 0.21, 0.44)
 const COAT_MILITIA := Color(0.33, 0.26, 0.18)
@@ -82,7 +84,8 @@ var _shot_max_age := SHOT_MAX_AGE
 var _cycle_index := 0
 var _focus_lane := 0
 
-var _mm_by_id: Dictionary = {}        # company id -> MultiMeshInstance3D
+var _mm_by_id: Dictionary = {}        # company id -> Array[MultiMeshInstance3D], (skin, pose) buckets
+var _last_shot_time: Dictionary = {}  # company id -> {platoon: anim_time of last discharge}
 var _mat_by_id: Dictionary = {}       # company id -> StandardMaterial3D
 var _coat_by_id: Dictionary = {}      # company id -> coat color (for the fallen)
 var _fallen_mesh_by_id: Dictionary = {}  # built once; casualties share it
@@ -92,6 +95,7 @@ var _fallen_parent: Node3D
 var _fx_parent: Node3D
 var _fx: Array[Dictionary] = []
 var _smoke_boxes: Array[MeshInstance3D] = []
+var _rain: MultiMeshInstance3D
 var _camera: Camera3D
 var _hud: Label
 var _log_label: Label
@@ -135,6 +139,11 @@ func _ready() -> void:
 				c.prev_pos_y = c.pos_y
 	if not _auto:
 		sim.echo_orders_for = PLAYER_ID  # orders answer back (playtest #1)
+	# Weather is sim truth, not a filter: rain ruins priming and slows
+	# reloading, and the sky is only how you SEE that (docs/06).
+	var wx := String(args.get("weather", ""))
+	if wx != "":
+		sim.weather = wx
 	_build_environment()
 	_build_field()
 	for c in sim.companies:
@@ -161,6 +170,7 @@ func _process(delta: float) -> void:
 		_spawn_fire_effects(c)
 	_update_fx(delta)
 	_update_smoke()
+	_update_rain()
 	if _cinematic:
 		_update_camera_cinematic(delta)
 	else:
@@ -255,12 +265,19 @@ func _order(verb: String) -> void:
 
 # --- construction -----------------------------------------------------
 
+## Light is a scene's clock (docs/06). Every scenario names an hour and
+## a sky, and the whole field's grade follows from it: Lexington is
+## fought at first light, the Battle Road through a long afternoon,
+## Stony Point under a quarter moon. Depth fog carries the distance —
+## atmospheric perspective is most of what makes a field feel large.
 func _build_environment() -> void:
 	var we := WorldEnvironment.new()
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	var sun := DirectionalLight3D.new()
+	var fog_color := Color(0.72, 0.74, 0.76)
+	var fog_density := 0.0022
 	if sim.night:
 		env.background_color = Color(0.05, 0.06, 0.10)  # doc 06: night scenes are dark
 		env.ambient_light_color = Color(0.35, 0.40, 0.56)
@@ -268,6 +285,27 @@ func _build_environment() -> void:
 		sun.rotation_degrees = Vector3(-36.0, -25.0, 0.0)  # low moon
 		sun.light_energy = 0.35
 		sun.light_color = Color(0.68, 0.76, 0.95)
+		fog_color = Color(0.10, 0.13, 0.20)
+		fog_density = 0.0030
+	elif _scenario == "lexington":
+		# 05:00, April 19: sun barely up, ground mist, long cold shadows.
+		env.background_color = Color(0.62, 0.60, 0.58)
+		env.ambient_light_color = Color(0.62, 0.66, 0.78)
+		env.ambient_light_energy = 0.55
+		sun.rotation_degrees = Vector3(-8.0, 55.0, 0.0)   # raking dawn light
+		sun.light_energy = 0.85
+		sun.light_color = Color(1.0, 0.86, 0.70)
+		fog_color = Color(0.72, 0.71, 0.70)
+		fog_density = 0.0075                              # dawn mist on the Green
+	elif _scenario == "battle_road":
+		# Mid-afternoon, high spring sun, dust and powder smoke hanging.
+		env.background_color = Color(0.70, 0.74, 0.79)
+		env.ambient_light_color = Color(0.82, 0.84, 0.88)
+		env.ambient_light_energy = 0.62
+		sun.rotation_degrees = Vector3(-58.0, 25.0, 0.0)
+		sun.light_energy = 1.25
+		sun.light_color = Color(1.0, 0.97, 0.90)
+		fog_density = 0.0026
 	else:
 		env.background_color = Color(0.66, 0.68, 0.70)  # overcast — doc 06 light rules
 		env.ambient_light_color = Color(0.84, 0.84, 0.87)
@@ -275,12 +313,64 @@ func _build_environment() -> void:
 		sun.rotation_degrees = Vector3(-44.0, 40.0, 0.0)
 		sun.light_energy = 1.15
 		sun.light_color = Color(1.0, 0.96, 0.88)  # late-afternoon warmth
+	if sim.weather == "rain":
+		# A downpour eats the light and the distance both.
+		env.background_color = env.background_color.darkened(0.42)
+		env.ambient_light_color = env.ambient_light_color.lerp(Color(0.55, 0.58, 0.62), 0.6)
+		env.ambient_light_energy *= 0.75
+		sun.light_energy *= 0.45
+		fog_color = fog_color.darkened(0.35)
+		fog_density *= 3.2
+	env.fog_enabled = true
+	env.fog_light_color = fog_color
+	env.fog_density = fog_density
+	env.fog_sky_affect = 0.0
 	we.environment = env
 	add_child(we)
 	add_child(sun)
+	if sim.night:
+		ColonialLib.make_moon(self, sun)
 	_camera = Camera3D.new()
 	add_child(_camera)
 	_camera.position = Vector3(18.0, 24.0, -150.0)
+	if sim.weather == "rain":
+		_build_rain()
+
+
+## Rain as falling streaks — one MultiMesh, scrolled in a column that
+## follows the camera so a 400-yard field doesn't need 400 yards of drops.
+func _build_rain() -> void:
+	var streak := BoxMesh.new()
+	streak.size = Vector3(0.02, 0.85, 0.02)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_color = Color(0.78, 0.82, 0.88, 0.35)
+	streak.material = mat
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = streak
+	mm.instance_count = RAIN_COUNT
+	_rain = MultiMeshInstance3D.new()
+	_rain.multimesh = mm
+	add_child(_rain)
+
+
+func _update_rain() -> void:
+	if _rain == null:
+		return
+	var mm := _rain.multimesh
+	var origin := _camera.position
+	var tilt := Basis(Vector3.RIGHT, 0.22)   # wind-driven, never vertical
+	for i in mm.instance_count:
+		var h1 := float((i * 2654435761) % 1000) / 1000.0
+		var h2 := float((i * 1103515245 + 12345) % 1000) / 1000.0
+		var fall := 26.0 + h1 * 12.0
+		var y := 34.0 - fmod(_anim_time * fall + h2 * 34.0, 34.0)
+		mm.set_instance_transform(i, Transform3D(tilt, Vector3(
+			origin.x + (h1 - 0.5) * 90.0,
+			y,
+			origin.z + (h2 - 0.5) * 90.0 + 30.0)))
 
 
 func _build_field() -> void:
@@ -318,28 +408,37 @@ func _lane_x(lane: int) -> float:
 	return -13.0 if lane == 0 else 13.0
 
 
+## A company is drawn as SKIN_BUCKETS x POSE_COUNT MultiMeshes. A
+## MultiMesh can't skin a skeleton, so motion comes from sorting each
+## man into the bucket his sim state and his own gait phase call for —
+## marching legs, muskets coming off the shoulder, ramrods working.
+## Colors (coat and skin alike) are baked as vertex colors, so each
+## bucket is one draw call and the material stays white for fades.
+const SKIN_BUCKETS := 3
+
 func _build_company_visual(c: BattleCompany, color: Color) -> void:
-	# Dress the company: colors are baked into the figure mesh as vertex
-	# colors, so the whole company is still one draw call. The material
-	# stays white so the broken/eliminated fade below keeps working.
-	var mesh: ArrayMesh
-	if c.side == 0 and c.drill() == 0:
-		mesh = FigureLib.build_militiaman(COAT_MILITIA.lerp(color, 0.15))
-	else:
-		mesh = FigureLib.build_soldier(color)
+	var militia := c.side == 0 and c.drill() == 0
+	var coat := COAT_MILITIA.lerp(color, 0.15) if militia else color
+	var kind := "militia" if militia else "soldier"
 	var mat := FigureLib.figure_material()
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = mesh
-	mm.instance_count = c.brigade.soldiers.size()
-	var mmi := MultiMeshInstance3D.new()
-	mmi.multimesh = mm
-	mmi.material_override = mat
-	add_child(mmi)
-	_mm_by_id[c.id] = mmi
+	var buckets: Array[MultiMeshInstance3D] = []
+	for s in SKIN_BUCKETS:
+		var skin: Color = FigureLib.skin_for(s * 7 + 1, absi(c.id.hash()))
+		for mesh in FigureLib.build_pose_set(coat, kind, skin):
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.mesh = mesh
+			mm.instance_count = c.brigade.soldiers.size()
+			var mmi := MultiMeshInstance3D.new()
+			mmi.multimesh = mm
+			mmi.material_override = mat
+			add_child(mmi)
+			buckets.append(mmi)
+	_mm_by_id[c.id] = buckets
 	_mat_by_id[c.id] = mat
-	_coat_by_id[c.id] = COAT_MILITIA if (c.side == 0 and c.drill() == 0) else color
-	_fallen_mesh_by_id[c.id] = FigureLib.build_fallen(_coat_by_id[c.id])
+	_coat_by_id[c.id] = COAT_MILITIA if militia else color
+	_fallen_mesh_by_id[c.id] = FigureLib.build_fallen(_coat_by_id[c.id],
+		FigureLib.skin_for(3, absi(c.id.hash())))
 
 
 func _build_smoke() -> void:
@@ -393,9 +492,49 @@ func _company_disorder(c: BattleCompany) -> float:
 	return by_drill * by_nerve * by_state
 
 
+## Which pose man `i` is holding this frame — sim state first, then his
+## own gait phase, so a marching company's feet are never in lockstep.
+func _pose_for(c: BattleCompany, i: int, h1: float, moving: bool) -> int:
+	var step_rate := 2.6 if c.state == BattleCompany.State.BROKEN else 1.7
+	var gait := int(_anim_time * step_rate + h1 * 2.0) % 2
+	var stride := FigureLib.Pose.MARCH_A if gait == 0 else FigureLib.Pose.MARCH_B
+	if c.scrum_active and i < c.man_state.size():
+		match c.man_state[i]:
+			BattleCompany.ManState.FIGHTING:
+				return FigureLib.Pose.CHARGE
+			BattleCompany.ManState.FIRE_PAUSE:
+				return FigureLib.Pose.FIRE if c.man_fired[i] > 0 else FigureLib.Pose.PRESENT
+			_:
+				return stride
+	match c.state:
+		BattleCompany.State.BROKEN, BattleCompany.State.CHARGING:
+			return FigureLib.Pose.CHARGE if c.state == BattleCompany.State.CHARGING else stride
+		BattleCompany.State.PRESENTING:
+			return FigureLib.Pose.PRESENT
+	# A man reloads if his own platoon is empty — half the line works its
+	# ramrod while the other half stands ready, which is the whole point
+	# of platoon fire (docs/02).
+	var platoon := 0 if i < c.effectives() / 2 else 1
+	if _fired_recently(c, platoon):
+		return FigureLib.Pose.FIRE
+	if not c.platoon_loaded[platoon]:
+		return FigureLib.Pose.RELOAD
+	if moving:
+		return stride
+	return FigureLib.Pose.STAND
+
+
+## True for ~0.4 s after a platoon discharges — long enough to read.
+func _fired_recently(c: BattleCompany, platoon: int) -> bool:
+	var t: Dictionary = _last_shot_time.get(c.id, {})
+	return _anim_time - float(t.get(platoon, -99.0)) < 0.4
+
+
 func _update_company_visual(c: BattleCompany) -> void:
-	var mmi: MultiMeshInstance3D = _mm_by_id[c.id]
-	var mm := mmi.multimesh
+	var buckets: Array = _mm_by_id[c.id]
+	var counts := PackedInt32Array()
+	counts.resize(buckets.size())
+	var capacity: int = (buckets[0] as MultiMeshInstance3D).multimesh.instance_count
 	var z := _render_z(c)
 	var lx := _lane_x(c.lane)
 	var alive := c.effectives()
@@ -405,22 +544,32 @@ func _update_company_visual(c: BattleCompany) -> void:
 		or c.state == BattleCompany.State.BROKEN
 	var disorder := _company_disorder(c)
 	var broken := c.state == BattleCompany.State.BROKEN
-	var hidden := Transform3D(Basis.IDENTITY.scaled(Vector3(0.001, 0.001, 0.001)), Vector3(0, -10, 0))
-	for i in mm.instance_count:
+
+	# Place each man into the (skin, pose) bucket he belongs in this frame.
+	for i in capacity:
 		if i < alive and c.is_active():
 			var h1 := float((i * 2654435761) % 1000) / 1000.0   # persistent per-man character
 			var h2 := float((i * 1103515245 + 12345) % 1000) / 1000.0
-			# In the scrum the SIM owns every man's position — surging,
-			# pausing to fire, or locked in the press (playtest #2).
+			var bucket := (i % SKIN_BUCKETS) * FigureLib.POSE_COUNT \
+				+ _pose_for(c, i, h1, moving)
+			var slot := counts[bucket]
+			counts[bucket] = slot + 1
 			var body_y := 0.93 + h2 * 0.13   # no two men the same height
 			var body_w := 0.95 + h1 * 0.10
 			var body_scale := Vector3(body_w, body_y, body_w)
+			var mm: MultiMesh = (buckets[bucket] as MultiMeshInstance3D).multimesh
+			# In the scrum the SIM owns every man's position — surging,
+			# pausing to fire, or locked in the press (playtest #2).
 			if c.scrum_active and i < c.man_x.size():
 				var sx := lx + lerpf(c.man_prev_x[i], c.man_x[i], clock.alpha())
 				var sz := lerpf(c.man_prev_y[i], c.man_y[i], clock.alpha())
-				var sbob := sin(_anim_time * 11.0 + float(i) * 1.7) * 0.07
-				mm.set_instance_transform(i, Transform3D(
-					Basis.IDENTITY.rotated(Vector3.UP, (h2 - 0.5) * 1.6).scaled(body_scale),
+				var sbob := sin(_anim_time * 11.0 + float(i) * 1.7) * 0.05
+				# In the press a man faces whoever is in front of him.
+				var face_ang := (h2 - 0.5) * 1.6
+				if c.man_state[i] == BattleCompany.ManState.FIGHTING:
+					face_ang = (0.0 if c.facing() > 0.0 else PI) + (h1 - 0.5) * 0.8
+				mm.set_instance_transform(slot, Transform3D(
+					Basis.IDENTITY.rotated(Vector3.UP, face_ang).scaled(body_scale),
 					Vector3(sx, 0.85 * body_y + sbob, sz)))
 				continue
 			var file := i % FILES
@@ -444,18 +593,31 @@ func _update_company_visual(c: BattleCompany) -> void:
 				var flight := 2.0 + h2 * 6.0
 				x += cos(ang) * flight
 				zz += sin(ang) * flight * 0.6
-			var bob := sin(_anim_time * 9.0 + float(i) * 1.7) * (0.06 if moving else 0.02)
+			# Marching men rise and fall on the step; standing men barely.
+			var bob := sin(_anim_time * (moving_step_rate(c) * TAU) + h1 * 6.3) \
+				* (0.045 if moving else 0.012)
 			# The line faces the enemy; each man stands a touch off-square.
 			var facing := 0.0 if c.facing() > 0.0 else PI
-			mm.set_instance_transform(i, Transform3D(
+			if broken:
+				facing += PI + (h1 - 0.5) * 1.2   # a routing man faces away
+			mm.set_instance_transform(slot, Transform3D(
 				Basis.IDENTITY.rotated(Vector3.UP,
 					facing + (h2 - 0.5) * 0.5 * disorder).scaled(body_scale),
 				Vector3(x, 0.85 * body_y + bob, zz)))
-		else:
-			mm.set_instance_transform(i, hidden)
+	# Park every unused instance of every bucket out of sight.
+	var hidden := Transform3D(Basis.IDENTITY.scaled(Vector3(0.001, 0.001, 0.001)),
+		Vector3(0, -10, 0))
+	for b in buckets.size():
+		var mmb: MultiMesh = (buckets[b] as MultiMeshInstance3D).multimesh
+		for k in range(counts[b], capacity):
+			mmb.set_instance_transform(k, hidden)
 	var mat: StandardMaterial3D = _mat_by_id[c.id]
 	var faded := broken or not c.is_active()
 	mat.albedo_color = Color.WHITE.lerp(Color(0.5, 0.5, 0.5), 0.6 if faded else 0.0)
+
+
+func moving_step_rate(c: BattleCompany) -> float:
+	return 2.6 if c.state == BattleCompany.State.BROKEN else 1.7
 
 
 func _spawn_fallen(c: BattleCompany) -> void:
@@ -486,6 +648,10 @@ func _spawn_fire_effects(c: BattleCompany) -> void:
 	var prev: Array = _prev_shots[c.id]
 	for p in BattleCompany.PLATOON_COUNT:
 		if c.platoon_shots[p] > int(prev[p]):
+			# Remember the discharge so the men can hold the FIRE pose.
+			if not _last_shot_time.has(c.id):
+				_last_shot_time[c.id] = {}
+			(_last_shot_time[c.id] as Dictionary)[p] = _anim_time
 			var z := _render_z(c) + c.facing() * 0.9
 			var lx := _lane_x(c.lane) + (-3.4 if p == 0 else 3.4)
 			for j in 4:
@@ -667,7 +833,13 @@ func _update_hud() -> void:
 	var pc := sim.get_company(PLAYER_ID)
 	var foe := sim.nearest_enemy(pc) if pc != null else null
 	var lines: Array[String] = []
-	lines.append("LET TYRANTS SHAKE — M2 vertical slice")
+	var wx_note := ""
+	if sim.weather == "rain":
+		wx_note = "   |   RAIN — priming damp, %d%% of shots fail, reloading slow" % \
+			int(sim.misfire_loss() * 100.0)
+	elif sim.night:
+		wx_note = "   |   NIGHT — firing at shapes"
+	lines.append("LET TYRANTS SHAKE — M2 vertical slice" + wx_note)
 	lines.append("[1] advance  [2] halt  [3] withdraw   [SPACE hold] present -> [release] FIRE   [F] volley/at-will  [C] charge  [R] rally  [V] camera  [wheel] zoom  [ENTER] restart")
 	if sim.night:
 		var alarm := "THE ALARM IS RAISED" if sim.alarm_raised else "silence — the columns are undiscovered"

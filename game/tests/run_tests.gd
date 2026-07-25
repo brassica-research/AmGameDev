@@ -702,11 +702,40 @@ func _test_art_form_pass() -> void:
 	col_lib.make_bare_tree(grove, Vector3(5, 0, 5), 42)
 	check(grove.get_child_count() == 1, "bare tree builds with or without third-party packs")
 	grove.free()
-	# The presentation layer still parses — art wiring touched all of it.
-	for path in ["res://src/presentation/battle_scene.gd",
-			"res://src/presentation/cutscene_scene.gd",
-			"res://src/presentation/camp_scene.gd"]:
-		check(load(path) != null, "parses: %s" % path)
+	# EVERY script must parse. Hand-listing the scenes let world_scene.gd
+	# ship a parse error: the scene then ran with no script at all, so
+	# _process never fired, --quit-after never quit, and three capture
+	# jobs sat recording an empty world until the runner killed them.
+	# A missing script is silent at runtime and expensive in CI minutes —
+	# so the suite sweeps the whole source tree instead.
+	var scripts := _all_scripts("res://src")
+	check(scripts.size() >= 15, "the sweep found the source tree (%d scripts)" % scripts.size())
+	var bad: Array[String] = []
+	for path in scripts:
+		if load(path) == null:
+			bad.append(path)
+	check(bad.is_empty(), "every script in src/ parses%s" % (
+		"" if bad.is_empty() else " — FAILED: %s" % ", ".join(bad)))
+	# Scene files must point at scripts that exist, too.
+	for scene_path in ["res://scenes/battle.tscn", "res://scenes/camp.tscn",
+			"res://scenes/cutscene.tscn", "res://scenes/world.tscn"]:
+		var packed := load(scene_path) as PackedScene
+		check(packed != null, "scene loads: %s" % scene_path)
+
+
+## Every .gd under a directory, recursively.
+func _all_scripts(dir_path: String) -> Array[String]:
+	var out: Array[String] = []
+	var dir := DirAccess.open(dir_path)
+	if dir == null:
+		return out
+	for f in dir.get_files():
+		if f.get_extension() == "gd":
+			out.append(dir_path + "/" + f)
+	for sub in dir.get_directories():
+		out.append_array(_all_scripts(dir_path + "/" + sub))
+	out.sort()
+	return out
 
 
 ## Mission 1.5 opening (docs/03): the Lexington script is part of the

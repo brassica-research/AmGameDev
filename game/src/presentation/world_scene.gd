@@ -341,7 +341,7 @@ func _update_hud() -> void:
 		eye = "CHALLENGED"
 	elif heat > 0.15:
 		eye = "WATCHED"
-	var stance_name := ["walking", "running", "crouched"][sim.av_stance]
+	var stance_name: String = ["walking", "running", "crouched"][sim.av_stance]
 	var obj := sim.current_objective()
 	var lines := PackedStringArray()
 	lines.append("%s   |   %s   |   cover %d%%" % [

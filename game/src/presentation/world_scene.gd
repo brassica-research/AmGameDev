@@ -16,6 +16,7 @@ extends Node3D
 ##   --auto             the scripted walk (films, tests)
 ##   --lowfx            painted light pools instead of omni lights
 ##                      (software GL / low-end rigs)
+##   --time-scale=X     run the night faster (films)
 ##   --quit-after=N     film-mode safety quit
 
 const FigureLib := preload("res://src/presentation/figure_lib.gd")
@@ -46,6 +47,9 @@ func _ready() -> void:
 	var args := _parse_user_args()
 	_auto = args.has("auto")
 	_lowfx = args.has("lowfx")
+	# Films run the night at speed: the courier's walk is 91 seconds of
+	# sim time, and software-GL capture pays for every frame of it.
+	Engine.time_scale = clampf(float(String(args.get("time-scale", "1"))), 0.5, 3.0)
 	_quit_after = float(String(args.get("quit-after", "0")))
 	var id := String(args.get("world", "boston_1775"))
 	var file := FileAccess.open("%s/%s.json" % [WORLD_DIR, id], FileAccess.READ)

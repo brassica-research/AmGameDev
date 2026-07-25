@@ -27,7 +27,7 @@ concurrency:
 jobs:
   capture:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 55
     env:
       GODOT_VERSION: 4.4-stable
     steps:
@@ -77,8 +77,8 @@ jobs:
             --rendering-method gl_compatibility --rendering-driver opengl3 \
             --audio-driver Dummy \
             --resolution 960x540 \
-            --fixed-fps 30 --write-movie /tmp/world.avi \
-            -- --auto --world=boston_1775 --lowfx --quit-after=96
+            --fixed-fps 24 --write-movie /tmp/world.avi \
+            -- --auto --world=boston_1775 --lowfx --time-scale=2.0 --quit-after=50
 
       - name: Encode mp4 and stills
         run: |

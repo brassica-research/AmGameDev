@@ -54,33 +54,40 @@ const ARM_LEN := 0.48
 
 
 static func build_soldier(coat: Color, pose: int = Pose.STAND,
-		skin: Color = SKIN_TONES[0], breeches: Color = BUFF) -> ArrayMesh:
-	return _figure(coat, breeches, skin, "tricorn", true, true, pose)
+		skin: Color = SKIN_TONES[0], breeches: Color = BUFF, variant := 0) -> ArrayMesh:
+	return _figure(coat, breeches, skin, "tricorn", true, true, pose, variant)
 
 
 static func build_militiaman(coat: Color, pose: int = Pose.STAND,
-		skin: Color = SKIN_TONES[0]) -> ArrayMesh:
-	return _figure(coat, DARK_BREECH, skin, "round", true, false, pose)
+		skin: Color = SKIN_TONES[0], variant := 0) -> ArrayMesh:
+	# Militia wore what they owned: a round hat here, an old cocked hat
+	# there, and no two coats the same brown.
+	var hat := "tricorn" if variant % 2 == 1 else "round"
+	return _figure(coat, DARK_BREECH, skin, hat, true, false, pose, variant)
 
 
 static func build_civilian(coat: Color, pose: int = Pose.STAND,
-		skin: Color = SKIN_TONES[0]) -> ArrayMesh:
-	return _figure(coat, DARK_BREECH, skin, "round", false, false, pose)
+		skin: Color = SKIN_TONES[0], variant := 0) -> ArrayMesh:
+	var hat := "tricorn" if variant % 3 == 1 else "round"
+	return _figure(coat, DARK_BREECH, skin, hat, false, false, pose, variant)
 
 
 ## Build every pose for one dress, in Pose enum order — the set a
-## company animates through.
+## company animates through. `variant` shifts hat, cut, kit, and the
+## exact shade of the cloth, so three sets across a company already
+## look like a company rather than one man repeated forty times.
 static func build_pose_set(coat: Color, kind := "soldier",
-		skin: Color = SKIN_TONES[0]) -> Array[ArrayMesh]:
+		skin: Color = SKIN_TONES[0], variant := 0) -> Array[ArrayMesh]:
+	var worn := coat.lerp(Color(0.36, 0.33, 0.30), 0.05 * float(variant % 3))
 	var out: Array[ArrayMesh] = []
 	for p in POSE_COUNT:
 		match kind:
 			"militia":
-				out.append(build_militiaman(coat, p, skin))
+				out.append(build_militiaman(worn, p, skin, variant))
 			"civilian":
-				out.append(build_civilian(coat, p, skin))
+				out.append(build_civilian(worn, p, skin, variant))
 			_:
-				out.append(build_soldier(coat, p, skin))
+				out.append(build_soldier(worn, p, skin, BUFF, variant))
 	return out
 
 
@@ -109,7 +116,7 @@ static func build_fallen(coat: Color, skin: Color = SKIN_TONES[0]) -> ArrayMesh:
 
 
 static func _figure(coat: Color, breeches: Color, skin: Color, hat: String,
-		musket: bool, belts: bool, pose: int) -> ArrayMesh:
+		musket: bool, belts: bool, pose: int, variant := 0) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 
@@ -148,12 +155,16 @@ static func _figure(coat: Color, breeches: Color, skin: Color, hat: String,
 	# --- torso --------------------------------------------------------
 	var pitch := Basis(Vector3.RIGHT, lean)
 	var torso_c := Vector3(0.0, 0.10 - crouch, 0.0)
-	_box(st, coat, torso_c + pitch * Vector3(0.0, 0.03, 0.0),
-		Vector3(0.40, 0.54, 0.25), pitch)
+	# Chest tapers to the waist; the coat skirt flares back out over the
+	# hips. Two frusta, not two blocks.
+	_tube(st, coat, torso_c + pitch * Vector3(0.0, 0.03, 0.0),
+		Vector3(0.40, 0.54, 0.26), pitch, 1.12)
+	_tube(st, coat.darkened(0.06), torso_c + pitch * Vector3(0.0, -0.16, 0.0),
+		Vector3(0.36, 0.10, 0.24), pitch, 1.0)   # the waistband
 	# Coat skirts: the unbelted (militia frocks, greatcoats) hang longer.
 	var skirt_h := 0.34 if not belts else 0.24
-	_box(st, coat, torso_c + pitch * Vector3(0.0, -0.38, 0.0),
-		Vector3(0.45, skirt_h, 0.30), pitch)
+	_tube(st, coat, torso_c + pitch * Vector3(0.0, -0.22 - skirt_h / 2.0, 0.0),
+		Vector3(0.34, skirt_h, 0.26), pitch, 1.30)
 
 	# --- arms ---------------------------------------------------------
 	var l_sh := torso_c + pitch * Vector3(0.24, SHOULDER_Y - 0.10, 0.0)
@@ -181,20 +192,32 @@ static func _figure(coat: Color, breeches: Color, skin: Color, hat: String,
 
 	# --- head ---------------------------------------------------------
 	var head_c := torso_c + pitch * Vector3(0.0, 0.46, 0.0)
-	_box(st, STOCK_WHITE if belts else coat.darkened(0.3),
-		head_c + Vector3(0.0, -0.10, 0.0), Vector3(0.13, 0.07, 0.13))
-	_box(st, skin, head_c, Vector3(0.185, 0.21, 0.195))
+	_tube(st, STOCK_WHITE if belts else coat.darkened(0.3),
+		head_c + Vector3(0.0, -0.105, 0.0), Vector3(0.135, 0.08, 0.135))
+	# Skull, then a jaw narrowing to the chin — a head, not a die.
+	_tube(st, skin, head_c + Vector3(0.0, 0.03, 0.0),
+		Vector3(0.185, 0.15, 0.20), Basis.IDENTITY, 1.0, 1.06)
+	_tube(st, skin, head_c + Vector3(0.0, -0.075, 0.005),
+		Vector3(0.185, 0.08, 0.20), Basis.IDENTITY, 0.72)
 	# A queue of hair, clubbed at the neck — every man of the period had one.
-	_box(st, Color(0.20, 0.15, 0.11), head_c + Vector3(0.0, -0.02, -0.13),
-		Vector3(0.13, 0.20, 0.08))
+	_tube(st, Color(0.20, 0.15, 0.11), head_c + Vector3(0.0, 0.02, -0.10),
+		Vector3(0.15, 0.19, 0.12), Basis(Vector3.RIGHT, -0.25), 0.7)
 	if hat == "tricorn":
-		_box(st, HAT_BLACK, head_c + Vector3(0.0, 0.135, 0.0), Vector3(0.35, 0.045, 0.35))
-		_box(st, HAT_BLACK, head_c + Vector3(0.0, 0.135, 0.10), Vector3(0.30, 0.10, 0.10),
-			Basis(Vector3.RIGHT, 0.5))   # the cocked front brim
-		_box(st, HAT_BLACK, head_c + Vector3(0.0, 0.215, 0.0), Vector3(0.17, 0.12, 0.17))
+		# Three cocked corners over a round crown: the period's signature.
+		_tube(st, HAT_BLACK, head_c + Vector3(0.0, 0.135, 0.0),
+			Vector3(0.36, 0.035, 0.36))
+		for corner in [Vector3(0.0, 0.0, 0.15), Vector3(0.13, 0.0, -0.09),
+				Vector3(-0.13, 0.0, -0.09)]:
+			_box(st, HAT_BLACK, head_c + Vector3(0.0, 0.15, 0.0) + corner,
+				Vector3(0.20, 0.075, 0.11),
+				Basis(Vector3.UP, atan2(corner.x, corner.z)) * Basis(Vector3.RIGHT, 0.55))
+		_tube(st, HAT_BLACK, head_c + Vector3(0.0, 0.205, 0.0),
+			Vector3(0.185, 0.11, 0.185), Basis.IDENTITY, 0.88)
 	else:
-		_box(st, HAT_BLACK, head_c + Vector3(0.0, 0.125, 0.0), Vector3(0.31, 0.04, 0.31))
-		_box(st, HAT_BLACK, head_c + Vector3(0.0, 0.195, 0.0), Vector3(0.19, 0.11, 0.19))
+		_tube(st, HAT_BLACK, head_c + Vector3(0.0, 0.125, 0.0),
+			Vector3(0.32, 0.035, 0.32))
+		_tube(st, HAT_BLACK, head_c + Vector3(0.0, 0.19, 0.0),
+			Vector3(0.20, 0.11, 0.20), Basis.IDENTITY, 0.92)
 
 	# --- kit ----------------------------------------------------------
 	if belts:
@@ -212,6 +235,16 @@ static func _figure(coat: Color, breeches: Color, skin: Color, hat: String,
 		_box(st, Color(0.32, 0.24, 0.16), torso_c + pitch * Vector3(-0.16, -0.20, 0.08),
 			Vector3(0.16, 0.16, 0.08), pitch)
 
+	# Kit a man carries because he chose to: a rolled blanket over the
+	# shoulder, a wooden canteen on a cord. Varies per variant, so a
+	# company reads as individuals who packed differently.
+	if variant % 3 == 2:
+		_tube(st, coat.lerp(Color(0.45, 0.42, 0.36), 0.55),
+			torso_c + pitch * Vector3(0.02, 0.14, -0.06),
+			Vector3(0.14, 0.52, 0.14), pitch * Basis(Vector3.BACK, 1.15), 1.0)
+	if variant % 3 == 1:
+		_tube(st, Color(0.42, 0.33, 0.21), torso_c + pitch * Vector3(-0.20, -0.17, 0.09),
+			Vector3(0.19, 0.09, 0.19), pitch * Basis(Vector3.RIGHT, PI / 2.0))
 	if musket:
 		_musket(st, pose, torso_c, pitch)
 	return st.commit()
@@ -241,10 +274,10 @@ static func _musket(st: SurfaceTool, pose: int, torso_c: Vector3, pitch: Basis) 
 			# Shouldered: near-vertical on the left shoulder.
 			origin = torso_c + pitch * Vector3(-0.28, 0.42, -0.02)
 			basis = pitch * Basis(Vector3.BACK, 0.08)
-	_box(st, STEEL, origin + basis * Vector3(0, 0.20, 0), Vector3(0.038, 1.06, 0.038), basis)
-	_box(st, WOOD, origin + basis * Vector3(0, -0.36, 0), Vector3(0.06, 0.52, 0.065), basis)
+	_tube(st, STEEL, origin + basis * Vector3(0, 0.20, 0), Vector3(0.036, 1.06, 0.036), basis)
+	_tube(st, WOOD, origin + basis * Vector3(0, -0.36, 0), Vector3(0.058, 0.52, 0.062), basis)
 	_box(st, WOOD, origin + basis * Vector3(0, -0.62, 0.01), Vector3(0.075, 0.18, 0.10), basis)
-	_box(st, STEEL, origin + basis * Vector3(0, 0.86, 0), Vector3(0.019, 0.26, 0.019), basis)
+	_tube(st, STEEL, origin + basis * Vector3(0, 0.86, 0), Vector3(0.018, 0.26, 0.018), basis)
 	if pose == Pose.RELOAD:
 		# The ramrod, half-drawn.
 		_box(st, STEEL, origin + basis * Vector3(0.05, 0.62, 0.06),
@@ -254,20 +287,71 @@ static func _musket(st: SurfaceTool, pose: int, torso_c: Vector3, pitch: Basis) 
 ## A limb hanging from `pivot`, swung `angle` radians about X.
 static func _leg(st: SurfaceTool, cloth: Color, pivot: Vector3, angle: float) -> void:
 	var b := Basis(Vector3.RIGHT, angle)
-	_box(st, cloth, pivot + b * Vector3(0, -LEG_LEN / 2.0, 0),
-		Vector3(0.135, LEG_LEN, 0.16), b)
-	# Gaiters over the shoe — black, buttoned, to the knee.
-	_box(st, BOOT, pivot + b * Vector3(0, -LEG_LEN - 0.055, 0.02),
-		Vector3(0.14, 0.13, 0.22), b)
+	# Thigh tapering to the knee, then the gaitered calf below it.
+	_tube(st, cloth, pivot + b * Vector3(0, -LEG_LEN * 0.28, 0),
+		Vector3(0.155, LEG_LEN * 0.56, 0.17), b, 0.80)
+	_tube(st, BOOT, pivot + b * Vector3(0, -LEG_LEN * 0.78, 0.005),
+		Vector3(0.125, LEG_LEN * 0.48, 0.135), b, 0.86)
+	# The shoe: a low block, because a shoe IS a low block.
+	_box(st, BOOT, pivot + b * Vector3(0, -LEG_LEN - 0.045, 0.035),
+		Vector3(0.125, 0.09, 0.24), b)
 
 
 static func _arm(st: SurfaceTool, coat: Color, skin: Color, shoulder: Vector3,
 		angle: float, spread: float) -> void:
 	var b := Basis(Vector3.RIGHT, angle) * Basis(Vector3.BACK, spread)
-	_box(st, coat, shoulder + b * Vector3(0, -ARM_LEN / 2.0, 0),
-		Vector3(0.115, ARM_LEN, 0.14), b)
-	_box(st, skin, shoulder + b * Vector3(0, -ARM_LEN - 0.045, 0),
-		Vector3(0.095, 0.10, 0.115), b)
+	_tube(st, coat, shoulder + b * Vector3(0, -ARM_LEN * 0.30, 0),
+		Vector3(0.125, ARM_LEN * 0.62, 0.135), b, 0.82)
+	_tube(st, coat.lightened(0.05), shoulder + b * Vector3(0, -ARM_LEN * 0.76, 0),
+		Vector3(0.10, ARM_LEN * 0.40, 0.11), b, 0.92)   # the turned-back cuff
+	_tube(st, skin, shoulder + b * Vector3(0, -ARM_LEN - 0.04, 0),
+		Vector3(0.095, 0.11, 0.115), b, 0.85)
+
+
+## An octagonal prism along the basis' Y axis — limbs, torsos, barrels.
+## Eight sides instead of four is the whole difference between "boxes
+## wearing coats" and a body: silhouettes lose their corners and the
+## shading rolls around the form. `taper` scales the top ring, so the
+## same call makes a tapering thigh, a coat narrowing to the waist, or
+## a flaring skirt.
+static func _tube(st: SurfaceTool, color: Color, center: Vector3, size: Vector3,
+		basis := Basis.IDENTITY, taper := 1.0, front_bias := 1.0) -> void:
+	var half_h := size.y / 2.0
+	var ring: Array[Vector2] = []
+	for k in 8:
+		var a := (float(k) + 0.5) * TAU / 8.0
+		ring.append(Vector2(cos(a), sin(a)))
+	var bottom: Array[Vector3] = []
+	var top: Array[Vector3] = []
+	for r in ring:
+		var zb := r.y * (size.z / 2.0) * (front_bias if r.y > 0.0 else 1.0)
+		bottom.append(center + basis * Vector3(r.x * size.x / 2.0, -half_h, zb))
+		top.append(center + basis * Vector3(r.x * size.x / 2.0 * taper, half_h,
+			zb * taper))
+	for k in 8:
+		var n := (k + 1) % 8
+		var normal: Vector3 = (basis * Vector3(ring[k].x, 0.0, ring[k].y)).normalized()
+		for tri in [[top[k], top[n], bottom[n]], [top[k], bottom[n], bottom[k]]]:
+			for v in tri:
+				st.set_color(color)
+				st.set_normal(normal)
+				st.add_vertex(v)
+	# Caps.
+	for cap in [[top, basis * Vector3.UP], [bottom, basis * Vector3.DOWN]]:
+		var pts: Array = cap[0]
+		var normal: Vector3 = cap[1]
+		var center_pt := Vector3.ZERO
+		for p in pts:
+			center_pt += p
+		center_pt /= float(pts.size())
+		for k in 8:
+			var n := (k + 1) % 8
+			var tri: Array = [center_pt, pts[k], pts[n]] if normal.dot(basis * Vector3.UP) > 0.0 \
+				else [center_pt, pts[n], pts[k]]
+			for v in tri:
+				st.set_color(color)
+				st.set_normal(normal)
+				st.add_vertex(v)
 
 
 ## One box as 12 flat-shaded triangles, clockwise from outside (Godot

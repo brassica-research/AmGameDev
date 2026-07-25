@@ -424,9 +424,10 @@ func _build_company_visual(c: BattleCompany, color: Color) -> void:
 	var buckets: Array[MultiMeshInstance3D] = []
 	for s in SKIN_BUCKETS:
 		var skin: Color = FigureLib.skin_for(s * 7 + 1, absi(c.id.hash()))
-		for mesh in FigureLib.build_pose_set(coat, kind, skin):
+		for mesh in FigureLib.build_pose_set(coat, kind, skin, s):
 			var mm := MultiMesh.new()
 			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.use_colors = true   # per-man cloth wear, on top of baked color
 			mm.mesh = mesh
 			mm.instance_count = c.brigade.soldiers.size()
 			var mmi := MultiMeshInstance3D.new()
@@ -554,6 +555,8 @@ func _update_company_visual(c: BattleCompany) -> void:
 				+ _pose_for(c, i, h1, moving)
 			var slot := counts[bucket]
 			counts[bucket] = slot + 1
+			# Sun, dirt, and years of wear: no two coats the same value.
+			var wear := 0.88 + h1 * 0.22
 			var body_y := 0.93 + h2 * 0.13   # no two men the same height
 			var body_w := 0.95 + h1 * 0.10
 			var body_scale := Vector3(body_w, body_y, body_w)
@@ -571,6 +574,7 @@ func _update_company_visual(c: BattleCompany) -> void:
 				mm.set_instance_transform(slot, Transform3D(
 					Basis.IDENTITY.rotated(Vector3.UP, face_ang).scaled(body_scale),
 					Vector3(sx, 0.85 * body_y + sbob, sz)))
+				mm.set_instance_color(slot, Color(wear, wear, wear))
 				continue
 			var file := i % FILES
 			var rank := floori(float(i) / float(FILES))
@@ -604,6 +608,7 @@ func _update_company_visual(c: BattleCompany) -> void:
 				Basis.IDENTITY.rotated(Vector3.UP,
 					facing + (h2 - 0.5) * 0.5 * disorder).scaled(body_scale),
 				Vector3(x, 0.85 * body_y + bob, zz)))
+			mm.set_instance_color(slot, Color(wear, wear, wear))
 	# Park every unused instance of every bucket out of sight.
 	var hidden := Transform3D(Basis.IDENTITY.scaled(Vector3(0.001, 0.001, 0.001)),
 		Vector3(0, -10, 0))

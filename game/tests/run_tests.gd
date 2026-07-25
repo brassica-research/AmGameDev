@@ -915,12 +915,18 @@ func _test_world_stealth() -> void:
 	cw["z"] = float(knot["z"]) - 10.0
 	cw["heading"] = 0.0
 	var in_crowd := crowd_sim.visibility_to(cw)
-	crowd_sim.av_x = float(knot["x"]) + float(knot["r"]) + 6.0
-	var out_crowd := crowd_sim.visibility_to(cw)
+	check(crowd_sim.crowd_cover() > 0.4, "inside the knot you are one more coat")
+	# Isolate the variable: same man, same spot, same watcher — the only
+	# difference is whether there is a crowd around him to be lost in.
+	knot["r"] = 0.001
+	var alone := crowd_sim.visibility_to(cw)
+	check(crowd_sim.crowd_cover() == 0.0, "with the knot gone there is no cover")
+	check(in_crowd < alone, "blending beats standing alone in the same spot (%.2f vs %.2f)"
+		% [in_crowd, alone])
+	# And stepping out of a knot that is still there loses you its cover.
+	knot["r"] = 4.0
+	crowd_sim.av_x = float(knot["x"]) + 9.0
 	check(crowd_sim.crowd_cover() == 0.0, "outside the knot there is no cover")
-	crowd_sim.av_x = float(knot["x"])
-	check(crowd_sim.crowd_cover() > 0.4, "inside it you are one more coat")
-	check(in_crowd < out_crowd, "blending beats standing alone in the street")
 
 	# The scripted courier makes it through — challenged, but away.
 	var run_sim := WorldSim.from_data(data, 17750418)

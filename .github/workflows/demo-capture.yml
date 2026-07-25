@@ -62,13 +62,25 @@ jobs:
             --audio-driver Dummy \
             --resolution 1280x720 \
             --fixed-fps 30 --write-movie /tmp/battle.avi \
-            -- --auto --scenario=lexington --time-scale=1.4 --quit-after=200
+            -- --auto --scenario=lexington --time-scale=1.4 --quit-after=110
+
+      - name: Record the free world (Boston, the 18th of April)
+        run: |
+          xvfb-run -a -s "-screen 0 1280x720x24" \
+            ~/godot/Godot_v${GODOT_VERSION}_linux.x86_64 \
+            --path game res://scenes/world.tscn \
+            --rendering-method gl_compatibility --rendering-driver opengl3 \
+            --audio-driver Dummy \
+            --resolution 1280x720 \
+            --fixed-fps 30 --write-movie /tmp/world.avi \
+            -- --auto --world=boston_1775 --quit-after=105
 
       - name: Encode mp4 and stills
         run: |
           mkdir -p demo
           rm -f demo/still-*.png
-          ffmpeg -y -i /tmp/battle.avi \
+          ffmpeg -y -i /tmp/battle.avi -i /tmp/world.avi \
+            -filter_complex "[0:v][1:v]concat=n=2:v=1:a=0[v]" -map "[v]" \
             -c:v libx264 -preset medium -crf 27 \
             -pix_fmt yuv420p -movflags +faststart demo/demo.mp4
           DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 demo/demo.mp4)

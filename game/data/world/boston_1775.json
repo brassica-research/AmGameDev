@@ -1,0 +1,49 @@
+{
+  "id": "boston_1775",
+  "title": "The Eighteenth of April — occupied Boston, after dark",
+  "design_note": "Free-world stealth on real ground (docs/13). Gage's regiments had held Boston since 1768; on the night of April 18, 1775 he put officers into the streets and onto the Charlestown roads expressly to stop messengers. Warren sent Revere and Dawes anyway. You carry word from Warren's house on Hanover Street to the Old North Church — where the lanterns go up — and then to the boat waiting in the North End. The patrols are not scripted to catch you: they walk their beats, and what they see depends on where you stand.",
+  "sources": ["revere_deposition_1775", "fischer_paul_reveres_ride", "gage_correspondence"],
+  "start": [-26, -35],
+  "blocks": [
+    {"name": "hanover_row_w", "pos": [-39, -39], "size": [18, 18], "height": 8},
+    {"name": "hanover_row_e", "pos": [-13, -39], "size": [18, 18], "height": 7},
+    {"name": "cross_street_s", "pos": [13, -39], "size": [18, 18], "height": 7},
+    {"name": "warehouse_s", "pos": [39, -39], "size": [18, 18], "height": 6},
+    {"name": "printers_row", "pos": [-39, -13], "size": [18, 18], "height": 8},
+    {"name": "tavern_block", "pos": [-13, -13], "size": [18, 18], "height": 7},
+    {"name": "counting_house", "pos": [13, -13], "size": [18, 18], "height": 9},
+    {"name": "ropewalk", "pos": [39, -13], "size": [18, 18], "height": 5},
+    {"name": "north_row_w", "pos": [-39, 13], "size": [18, 18], "height": 7},
+    {"name": "north_row_c", "pos": [-13, 13], "size": [18, 18], "height": 8},
+    {"name": "sail_loft", "pos": [13, 13], "size": [18, 18], "height": 6},
+    {"name": "north_battery", "pos": [39, 13], "size": [18, 18], "height": 6},
+    {"name": "old_north_church", "pos": [-13, 39], "size": [16, 16], "height": 16},
+    {"name": "parsonage", "pos": [-39, 39], "size": [18, 18], "height": 7},
+    {"name": "wharf_stores", "pos": [13, 39], "size": [18, 14], "height": 6}
+  ],
+  "crowds": [
+    {"name": "the last drinkers turned out of the Green Dragon", "pos": [-26, 0], "radius": 5.0, "count": 11},
+    {"name": "watermen arguing over a tide", "pos": [26, 30], "radius": 4.5, "count": 8},
+    {"name": "a knot at the pump", "pos": [0, 0], "radius": 4.0, "count": 7}
+  ],
+  "watchers": [
+    {"id": "king_street_patrol", "kind": "patrol", "speed": 1.15, "cone_degrees": 78, "range": 27,
+     "route": [[-30, 0], [30, 0], [30, -26], [-30, -26]]},
+    {"id": "north_street_patrol", "kind": "patrol", "speed": 1.05, "cone_degrees": 72, "range": 25,
+     "route": [[0, -20], [0, 34], [26, 34], [26, -20]]},
+    {"id": "church_sentry", "kind": "sentry", "speed": 0.5, "cone_degrees": 115, "range": 31,
+     "route": [[3, 30], [3, 26]]},
+    {"id": "wharf_piquet", "kind": "piquet", "speed": 0.9, "cone_degrees": 84, "range": 23,
+     "route": [[22, 52], [34, 52]]}
+  ],
+  "objectives": [
+    {"pos": [-26, 26], "radius": 3.5, "label": "The sexton's door. Robert Newman has the key and the lanterns."},
+    {"pos": [0, 26], "radius": 3.5, "label": "TWO lanterns in the steeple — by sea. The signal is up; now get off the peninsula."},
+    {"pos": [26, 56], "radius": 4.0, "label": "The boat is in the water, muffled oars, the Somerset lying black across the ferry way. You are away."}
+  ],
+  "demo_path": [
+    [-26, -20], [-26, -4], [-26, 0], [-26, 12], [-26, 22], [-26, 26],
+    [-20, 26], [-8, 26], [0, 26],
+    [0, 30], [12, 30], [26, 30], [26, 44], [26, 56]
+  ]
+}

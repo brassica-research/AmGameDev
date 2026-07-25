@@ -36,6 +36,7 @@ func _initialize() -> void:
 	_test_lexington_green()
 	_test_terrain_and_battle_road()
 	_test_weather()
+	_test_world_stealth()
 	_test_campaign_three_battles()
 	print("")
 	print("%d checks, %d failures" % [checks, failures])
@@ -851,6 +852,118 @@ func _test_weather() -> void:
 			same = false
 			break
 	check(same, "a rainy battle is as deterministic as a dry one")
+
+
+## The free-world / stealth layer (docs/13): a walk through occupied
+## Boston must obey the same contract as a volley — deterministic,
+## command-driven, and honest about what an eye can and cannot see.
+func _test_world_stealth() -> void:
+	print("\n-- Free world: the eighteenth of April, occupied Boston")
+	var file := FileAccess.open("res://data/world/boston_1775.json", FileAccess.READ)
+	check(file != null, "the world data loads")
+	if file == null:
+		return
+	var data: Dictionary = JSON.parse_string(file.get_as_text())
+	check(not (data.get("sources", []) as Array).is_empty(), "the world cites its sources")
+	# Geometry sanity: nobody starts, patrols, or must stand inside a house.
+	var geo := WorldSim.from_data(data, 1)
+	var clear := not geo._inside_block(geo.av_x, geo.av_z)
+	for o in geo.objectives:
+		if geo._inside_block(float(o["x"]), float(o["z"])):
+			clear = false
+	for w in geo.watchers:
+		for pt in (w["route"] as Array):
+			if geo._inside_block(float(pt[0]), float(pt[1])):
+				clear = false
+	check(clear, "no start, objective, or patrol route stands inside a building")
+
+	# Sight: the cone, the range, the walls, and the crowd all bite.
+	var s := WorldSim.from_data(data, 17750418)
+	var watcher: Dictionary = s.watchers[0]
+	watcher["x"] = 0.0
+	watcher["z"] = 0.0
+	watcher["heading"] = 0.0          # looking up +z
+	s.av_x = 0.0
+	s.av_z = 8.0                      # dead ahead, close
+	var front := s.visibility_to(watcher)
+	check(front > 0.3, "a man in the open ahead of a patrol is seen (%.2f)" % front)
+	s.av_z = -8.0                     # behind him
+	check(s.visibility_to(watcher) == 0.0, "nobody sees out the back of his head")
+	s.av_z = 8.0
+	s.av_stance = WorldSim.Stance.CROUCH
+	check(s.visibility_to(watcher) < front, "crouching cuts what he can see of you")
+	s.av_stance = WorldSim.Stance.RUN
+	check(s.visibility_to(watcher) > front, "a running man draws the eye")
+	s.av_stance = WorldSim.Stance.WALK
+	# A building between you and him is a wall, not a suggestion.
+	var blocked_sim := WorldSim.from_data(data, 5)
+	var bw: Dictionary = blocked_sim.watchers[0]
+	var house: Dictionary = blocked_sim.blocks[5]
+	bw["x"] = float(house["x"]) - float(house["w"]) / 2.0 - 6.0
+	bw["z"] = float(house["z"])
+	bw["heading"] = PI / 2.0
+	blocked_sim.av_x = float(house["x"]) + float(house["w"]) / 2.0 + 6.0
+	blocked_sim.av_z = float(house["z"])
+	check(blocked_sim.visibility_to(bw) == 0.0, "a house between you is cover")
+	# Blending into a knot of townsfolk.
+	var crowd_sim := WorldSim.from_data(data, 7)
+	var cw: Dictionary = crowd_sim.watchers[0]
+	var knot: Dictionary = crowd_sim.crowds[0]
+	crowd_sim.av_x = float(knot["x"])
+	crowd_sim.av_z = float(knot["z"])
+	cw["x"] = float(knot["x"])
+	cw["z"] = float(knot["z"]) - 10.0
+	cw["heading"] = 0.0
+	var in_crowd := crowd_sim.visibility_to(cw)
+	crowd_sim.av_x = float(knot["x"]) + float(knot["r"]) + 6.0
+	var out_crowd := crowd_sim.visibility_to(cw)
+	check(crowd_sim.crowd_cover() == 0.0, "outside the knot there is no cover")
+	crowd_sim.av_x = float(knot["x"])
+	check(crowd_sim.crowd_cover() > 0.4, "inside it you are one more coat")
+	check(in_crowd < out_crowd, "blending beats standing alone in the street")
+
+	# The scripted courier makes it through — challenged, but away.
+	var run_sim := WorldSim.from_data(data, 17750418)
+	var guard := 0
+	while not run_sim.over and guard < 6000:
+		run_sim.step()
+		guard += 1
+	check(run_sim.over and run_sim.outcome == "arrived",
+		"the courier reaches the boat (%s at %.0fs)" % [run_sim.outcome, float(run_sim.tick) * SimClock.TICK_DT])
+	check(run_sim.objective_index == run_sim.objectives.size(),
+		"every objective was made in order")
+	check(run_sim.log_lines.size() >= 3, "the night is narrated (%d lines)" % run_sim.log_lines.size())
+
+	# And walking straight up to a patrol gets you taken up.
+	var caught := WorldSim.from_data(data, 99)
+	caught.demo_path = []
+	var target: Dictionary = caught.watchers[0]
+	caught.av_x = float(target["x"])
+	caught.av_z = float(target["z"]) + 12.0
+	target["heading"] = 0.0
+	for i in 900:
+		var dx := float(target["x"]) - caught.av_x
+		var dz := float(target["z"]) - caught.av_z
+		var d := maxf(0.001, sqrt(dx * dx + dz * dz))
+		caught.bus.submit(caught.tick + 1, "avatar", "move", {"x": dx / d, "z": dz / d})
+		caught.step()
+		if caught.over:
+			break
+	check(caught.over and caught.outcome == "seized",
+		"walk into a patrol's face and you are taken up (%s)" % caught.outcome)
+	check(caught.alarm == WorldSim.Alert.ALERTED, "the street knows")
+
+	# Determinism, the property everything depends on.
+	var a := WorldSim.from_data(data, 4242)
+	var b := WorldSim.from_data(data, 4242)
+	var same := true
+	for i in 1200:
+		a.step()
+		b.step()
+		if a.state_hash() != b.state_hash():
+			same = false
+			break
+	check(same, "the same night plays out identically, tick for tick")
 
 
 ## Quiet variant for assertions inside loops — only failures print.

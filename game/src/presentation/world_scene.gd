@@ -14,6 +14,8 @@ extends Node3D
 ## Args after `--`:
 ##   --world=<id>       which data/world/<id>.json to walk
 ##   --auto             the scripted walk (films, tests)
+##   --lowfx            painted light pools instead of omni lights
+##                      (software GL / low-end rigs)
 ##   --quit-after=N     film-mode safety quit
 
 const FigureLib := preload("res://src/presentation/figure_lib.gd")
@@ -36,11 +38,14 @@ var _hud: Label
 var _log_label: Label
 var _title: Label
 var _last_stance := WorldSim.Stance.WALK
+## Capture / low-end rig: trades real omni lights for painted pools.
+var _lowfx := false
 
 
 func _ready() -> void:
 	var args := _parse_user_args()
 	_auto = args.has("auto")
+	_lowfx = args.has("lowfx")
 	_quit_after = float(String(args.get("quit-after", "0")))
 	var id := String(args.get("world", "boston_1775"))
 	var file := FileAccess.open("%s/%s.json" % [WORLD_DIR, id], FileAccess.READ)
@@ -165,13 +170,43 @@ func _build_town(data: Dictionary) -> void:
 			Vector3(float(b["w"]), float(b["h"]), float(b["d"])),
 			Color(0.24, 0.23, 0.27))
 	# Streetlamps at the crossings: pools of light are places NOT to walk.
+	# Under software GL each omni light costs an extra forward pass on
+	# every object in range, and a town is a lot of objects — so the
+	# capture rig trades the real lights for painted pools of light.
 	for c in data.get("crowds", []):
-		var lamp := OmniLight3D.new()
-		lamp.light_color = Color(1.0, 0.78, 0.42)
-		lamp.light_energy = 2.6
-		lamp.omni_range = 16.0
-		lamp.position = Vector3(float(c["pos"][0]), 3.4, float(c["pos"][1]))
-		add_child(lamp)
+		var at := Vector3(float(c["pos"][0]), 0.0, float(c["pos"][1]))
+		if _lowfx:
+			var pool := MeshInstance3D.new()
+			var disc := CylinderMesh.new()
+			disc.top_radius = 7.5
+			disc.bottom_radius = 7.5
+			disc.height = 0.02
+			disc.radial_segments = 16
+			var pmat := StandardMaterial3D.new()
+			pmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			pmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			pmat.albedo_color = Color(1.0, 0.80, 0.45, 0.13)
+			disc.material = pmat
+			pool.mesh = disc
+			pool.position = at + Vector3(0.0, 0.06, 0.0)
+			add_child(pool)
+		else:
+			var lamp := OmniLight3D.new()
+			lamp.light_color = Color(1.0, 0.78, 0.42)
+			lamp.light_energy = 2.6
+			lamp.omni_range = 16.0
+			lamp.position = at + Vector3(0.0, 3.4, 0.0)
+			add_child(lamp)
+		# The lamp post itself, either way.
+		var post := MeshInstance3D.new()
+		var pbox := BoxMesh.new()
+		pbox.size = Vector3(0.16, 3.4, 0.16)
+		var postmat := StandardMaterial3D.new()
+		postmat.albedo_color = Color(0.12, 0.11, 0.10)
+		pbox.material = postmat
+		post.mesh = pbox
+		post.position = at + Vector3(0.0, 1.7, 0.0)
+		add_child(post)
 	# The crowds themselves — cover you can walk into.
 	for c in sim.crowds:
 		var poses := FigureLib.build_pose_set(Color(0.30, 0.29, 0.34), "civilian",
@@ -214,7 +249,9 @@ func _build_actors() -> void:
 		cmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		cmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		cmat.albedo_color = Color(1.0, 0.85, 0.5, 0.10)
-		cmat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		# Back faces of a ground-flat cone are never seen; drawing them
+		# doubles the blended fill, which software GL charges for.
+		cmat.cull_mode = BaseMaterial3D.CULL_BACK
 		cone.material_override = cmat
 		add_child(cone)
 		_cone_nodes[w["id"]] = cone

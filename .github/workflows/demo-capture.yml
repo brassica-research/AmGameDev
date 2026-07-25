@@ -76,16 +76,16 @@ jobs:
             --path game res://scenes/world.tscn \
             --rendering-method gl_compatibility --rendering-driver opengl3 \
             --audio-driver Dummy \
-            --resolution 1280x720 \
+            --resolution 960x540 \
             --fixed-fps 30 --write-movie /tmp/world.avi \
-            -- --auto --world=boston_1775 --quit-after=96
+            -- --auto --world=boston_1775 --lowfx --quit-after=96
 
       - name: Encode mp4 and stills
         run: |
           mkdir -p demo
           rm -f demo/still-*.png
           ffmpeg -y -i /tmp/battle.avi -i /tmp/world.avi \
-            -filter_complex "[0:v][1:v]concat=n=2:v=1:a=0[v]" -map "[v]" \
+            -filter_complex "[1:v]scale=1280:720[w];[0:v][w]concat=n=2:v=1:a=0[v]" -map "[v]" \
             -c:v libx264 -preset medium -crf 27 \
             -pix_fmt yuv420p -movflags +faststart demo/demo.mp4
           DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 demo/demo.mp4)

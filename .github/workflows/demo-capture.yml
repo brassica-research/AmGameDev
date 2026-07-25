@@ -17,7 +17,12 @@ on:
 permissions:
   contents: write
 
-concurrency: demo-capture
+concurrency:
+  group: demo-capture
+  # A newer capture request supersedes an older one outright: without
+  # this, a run that hangs on a heavy scene holds the queue for its
+  # full 30-minute timeout before the fix gets to film.
+  cancel-in-progress: true
 
 jobs:
   capture:
@@ -73,7 +78,7 @@ jobs:
             --audio-driver Dummy \
             --resolution 1280x720 \
             --fixed-fps 30 --write-movie /tmp/world.avi \
-            -- --auto --world=boston_1775 --quit-after=105
+            -- --auto --world=boston_1775 --quit-after=96
 
       - name: Encode mp4 and stills
         run: |

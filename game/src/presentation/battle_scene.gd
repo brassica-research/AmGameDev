@@ -28,6 +28,7 @@ extends Node3D
 ##   --campaign-seed=N         founding seed for the sandboxed campaign
 ##   --battles=N               auto-campaign: quit after N battles
 ##   --weather=rain            damp powder: misfires, slow reloads, dark sky
+##   --lowfx                   no shadows (software GL / low-end rigs)
 ##   --time-scale=X            speed the film up (Engine.time_scale)
 ##   --lanes=2                 two engagement lanes (four companies)
 ##   --start-range=N           opening distance in yards (field scenario only)
@@ -39,6 +40,7 @@ const FILE_SPACING := 0.75
 const RANK_SPACING := 0.9
 
 const FigureLib := preload("res://src/presentation/figure_lib.gd")
+const LookDev := preload("res://src/presentation/look_dev.gd")
 const ColonialLib := preload("res://src/presentation/colonial_lib.gd")
 
 # The form-pass wardrobe (docs/04): the King's regulars in red; the
@@ -96,6 +98,7 @@ var _fx_parent: Node3D
 var _fx: Array[Dictionary] = []
 var _smoke_boxes: Array[MeshInstance3D] = []
 var _rain: MultiMeshInstance3D
+var _lowfx := false
 var _camera: Camera3D
 var _hud: Label
 var _log_label: Label
@@ -104,6 +107,7 @@ var _log_label: Label
 func _ready() -> void:
 	var args := _parse_user_args()
 	_auto = args.has("auto")
+	_lowfx = args.has("lowfx")
 	_scenario = String(args.get("scenario", "field" if _auto else "campaign"))
 	_lanes = clampi(int(String(args.get("lanes", "1"))), 1, 2)
 	_quit_after = float(String(args.get("quit-after", "0")))
@@ -271,65 +275,14 @@ func _order(verb: String) -> void:
 ## Stony Point under a quarter moon. Depth fog carries the distance —
 ## atmospheric perspective is most of what makes a field feel large.
 func _build_environment() -> void:
+	# One house look for the whole game (docs/06) — see look_dev.gd.
+	var hour := LookDev.hour_for_scenario(_scenario, sim.night)
 	var we := WorldEnvironment.new()
-	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	var sun := DirectionalLight3D.new()
-	var fog_color := Color(0.72, 0.74, 0.76)
-	var fog_density := 0.0022
-	if sim.night:
-		env.background_color = Color(0.05, 0.06, 0.10)  # doc 06: night scenes are dark
-		env.ambient_light_color = Color(0.35, 0.40, 0.56)
-		env.ambient_light_energy = 0.28
-		sun.rotation_degrees = Vector3(-36.0, -25.0, 0.0)  # low moon
-		sun.light_energy = 0.35
-		sun.light_color = Color(0.68, 0.76, 0.95)
-		fog_color = Color(0.10, 0.13, 0.20)
-		fog_density = 0.0030
-	elif _scenario == "lexington":
-		# 05:00, April 19: sun barely up, ground mist, long cold shadows.
-		env.background_color = Color(0.64, 0.63, 0.62)
-		env.ambient_light_color = Color(0.66, 0.70, 0.82)
-		env.ambient_light_energy = 0.72
-		sun.rotation_degrees = Vector3(-12.0, 55.0, 0.0)  # raking dawn light
-		sun.light_energy = 1.05
-		sun.light_color = Color(1.0, 0.86, 0.70)
-		fog_color = Color(0.74, 0.73, 0.71)
-		# Dawn mist, but a mist you can fight in: capture 19 filmed at
-		# 0.0075 and the Green was a grey wash 60 yards out.
-		fog_density = 0.0026
-	elif _scenario == "battle_road":
-		# Mid-afternoon, high spring sun, dust and powder smoke hanging.
-		env.background_color = Color(0.70, 0.74, 0.79)
-		env.ambient_light_color = Color(0.82, 0.84, 0.88)
-		env.ambient_light_energy = 0.62
-		sun.rotation_degrees = Vector3(-58.0, 25.0, 0.0)
-		sun.light_energy = 1.25
-		sun.light_color = Color(1.0, 0.97, 0.90)
-		fog_density = 0.0026
-	else:
-		env.background_color = Color(0.66, 0.68, 0.70)  # overcast — doc 06 light rules
-		env.ambient_light_color = Color(0.84, 0.84, 0.87)
-		env.ambient_light_energy = 0.6
-		sun.rotation_degrees = Vector3(-44.0, 40.0, 0.0)
-		sun.light_energy = 1.15
-		sun.light_color = Color(1.0, 0.96, 0.88)  # late-afternoon warmth
-	if sim.weather == "rain":
-		# A downpour eats the light and the distance both.
-		env.background_color = env.background_color.darkened(0.42)
-		env.ambient_light_color = env.ambient_light_color.lerp(Color(0.55, 0.58, 0.62), 0.6)
-		env.ambient_light_energy *= 0.75
-		sun.light_energy *= 0.45
-		fog_color = fog_color.darkened(0.35)
-		fog_density *= 3.2
-	env.fog_enabled = true
-	env.fog_light_color = fog_color
-	env.fog_density = fog_density
-	env.fog_sky_affect = 0.0
-	we.environment = env
+	we.environment = LookDev.environment(hour, sim.weather)
 	add_child(we)
+	var sun := LookDev.key_light(hour, sim.weather, not _lowfx)
 	add_child(sun)
+	add_child(LookDev.fill_light(hour))
 	if sim.night:
 		ColonialLib.make_moon(self, sun)
 	_camera = Camera3D.new()

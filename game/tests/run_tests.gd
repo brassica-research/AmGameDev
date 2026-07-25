@@ -702,6 +702,35 @@ func _test_art_form_pass() -> void:
 	col_lib.make_bare_tree(grove, Vector3(5, 0, 5), 42)
 	check(grove.get_child_count() == 1, "bare tree builds with or without third-party packs")
 	grove.free()
+	# The house look: one graded environment for every scene (docs/06).
+	var look: Variant = load("res://src/presentation/look_dev.gd")
+	check(look != null, "look_dev parses")
+	if look != null:
+		for hour in ["dawn", "overcast", "afternoon", "night", "town_night"]:
+			var env: Environment = look.environment(hour)
+			check_quiet(env.background_mode == Environment.BG_SKY,
+				"%s has a real sky, not a fill colour" % hour)
+			check_quiet(env.tonemap_mode == Environment.TONE_MAPPER_FILMIC,
+				"%s is filmic-tonemapped" % hour)
+			check_quiet(env.fog_enabled and env.fog_density > 0.0,
+				"%s carries its distance in fog" % hour)
+			check_quiet(env.adjustment_saturation < 1.0,
+				"%s keeps the saturation ceiling (docs/06)" % hour)
+		check(true, "every hour grades: sky, filmic tonemap, fog, muted saturation")
+		var wet: Environment = look.environment("afternoon", "rain")
+		var dry: Environment = look.environment("afternoon")
+		check(wet.fog_density > dry.fog_density and wet.adjustment_saturation < dry.adjustment_saturation,
+			"rain closes the distance down and drains the colour")
+		var key: DirectionalLight3D = look.key_light("dawn", "clear", true)
+		check(key.shadow_enabled, "the key light casts")
+		var flat: DirectionalLight3D = look.key_light("dawn", "clear", false)
+		check(not flat.shadow_enabled, "--lowfx rigs skip the shadow pass")
+		check(look.fill_light("dawn").light_energy < key.light_energy,
+			"the fill is a fill, not a second sun")
+		check(look.hour_for_scenario("lexington", false) == "dawn"
+			and look.hour_for_scenario("battle_road", false) == "afternoon"
+			and look.hour_for_scenario("field", true) == "night",
+			"each scenario is fought at its own hour")
 	# EVERY script must parse. Hand-listing the scenes let world_scene.gd
 	# ship a parse error: the scene then ran with no script at all, so
 	# _process never fired, --quit-after never quit, and three capture

@@ -9,6 +9,7 @@ extends Node3D
 ##   SHIFT (hold)       run — fast, and loud enough to turn heads
 ##   CTRL (hold)        crouch — slow, and half as visible
 ##   Q / E              swing the camera
+##   TAB (hold)         survey — take the measure of the street
 ##   ENTER              restart · ESC back to the battle
 ##
 ## Args after `--`:
@@ -21,7 +22,17 @@ extends Node3D
 
 const FigureLib := preload("res://src/presentation/figure_lib.gd")
 const ColonialLib := preload("res://src/presentation/colonial_lib.gd")
+const LookDev := preload("res://src/presentation/look_dev.gd")
 const WORLD_DIR := "res://data/world"
+
+# The camera rides close and low, over the shoulder — the open-world
+# convention, and the one that makes a street feel like a place rather
+# than a diagram (playtest directive: closer to that aesthetic).
+const BASE_FOV := 58.0
+const RUN_FOV := 68.0
+const CAM_BACK := 5.6
+const CAM_HEIGHT := 2.5
+const CAM_SIDE := 1.15        # over the right shoulder, not down the spine
 
 var sim: WorldSim
 var clock := SimClock.new()
@@ -41,6 +52,13 @@ var _title: Label
 var _last_stance := WorldSim.Stance.WALK
 ## Capture / low-end rig: trades real omni lights for painted pools.
 var _lowfx := false
+## "Take the measure of the street" — hold TAB: the courier stops and
+## reads the ground, and the watchers' attention becomes plainly legible.
+## Presentation only; the sim neither knows nor cares (docs/13 §4).
+var _survey := 0.0
+var _crowd_buckets: Array[Dictionary] = []
+var _avatar_poses: Array[ArrayMesh] = []
+var _avatar_pose := 0
 
 
 func _ready() -> void:
@@ -85,9 +103,13 @@ func _process(delta: float) -> void:
 	_elapsed += delta
 	if not _auto and not sim.over:
 		_read_input()
+	# Survey rises while held, falls off when released.
+	var want_survey := 1.0 if (not _auto and Input.is_key_pressed(KEY_TAB)) else 0.0
+	_survey = move_toward(_survey, want_survey, delta * 3.0)
 	clock.advance(delta, func(_t: int) -> void: sim.step())
 	_update_avatar()
 	_update_watchers()
+	_update_crowds()
 	_update_camera(delta)
 	_update_hud()
 	if _quit_after > 0.0 and _elapsed >= _quit_after:
@@ -137,27 +159,16 @@ func _unhandled_input(event: InputEvent) -> void:
 # --- construction ------------------------------------------------------
 
 func _build_environment() -> void:
+	# One house look for the whole game (docs/06) — see look_dev.gd.
 	var we := WorldEnvironment.new()
-	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.05, 0.06, 0.11)
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.42, 0.48, 0.66)
-	env.ambient_light_energy = 0.55
-	env.fog_enabled = true
-	env.fog_light_color = Color(0.10, 0.13, 0.21)
-	env.fog_density = 0.010          # a April night off the harbor
-	env.fog_sky_affect = 0.0
-	we.environment = env
+	we.environment = LookDev.environment("town_night")
 	add_child(we)
-	var moon := DirectionalLight3D.new()
-	moon.rotation_degrees = Vector3(-38.0, -28.0, 0.0)
-	moon.light_energy = 0.62
-	moon.light_color = Color(0.70, 0.79, 0.99)
+	var moon := LookDev.key_light("town_night", "clear", not _lowfx)
 	add_child(moon)
+	add_child(LookDev.fill_light("town_night"))
 	ColonialLib.make_moon(self, moon)
 	_cam = Camera3D.new()
-	_cam.fov = 62.0
+	_cam.fov = BASE_FOV
 	add_child(_cam)
 
 
@@ -211,30 +222,76 @@ func _build_town(data: Dictionary) -> void:
 		post.mesh = pbox
 		post.position = at + Vector3(0.0, 1.7, 0.0)
 		add_child(post)
-	# The crowds themselves — cover you can walk into.
+	# The crowds themselves — cover you can walk into, and the thing that
+	# makes a town read as inhabited rather than staged. Each knot gets
+	# every pose in the set so its people stand, walk, and turn about
+	# instead of facing one way like fenceposts.
 	for c in sim.crowds:
+		var count := int(c["count"])
 		var poses := FigureLib.build_pose_set(Color(0.30, 0.29, 0.34), "civilian",
-			FigureLib.skin_for(int(float(c["x"])) + 5))
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.mesh = poses[FigureLib.Pose.STAND]
-		mm.instance_count = int(c["count"])
-		for i in mm.instance_count:
-			var a := float(i) * TAU / float(mm.instance_count) + float(c["x"])
-			var rr: float = float(c["r"]) * (0.35 + 0.5 * float((i * 37) % 10) / 10.0)
-			mm.set_instance_transform(i, Transform3D(
-				Basis.IDENTITY.rotated(Vector3.UP, a + PI),
-				Vector3(float(c["x"]) + cos(a) * rr, 0.85, float(c["z"]) + sin(a) * rr)))
-		var mmi := MultiMeshInstance3D.new()
-		mmi.multimesh = mm
-		mmi.material_override = FigureLib.figure_material()
-		add_child(mmi)
+			FigureLib.skin_for(int(float(c["x"])) + 5), int(absf(float(c["x"]))) % 3)
+		var buckets: Array[MultiMeshInstance3D] = []
+		for mesh in poses:
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.use_colors = true
+			mm.mesh = mesh
+			mm.instance_count = count
+			var mmi := MultiMeshInstance3D.new()
+			mmi.multimesh = mm
+			mmi.material_override = FigureLib.figure_material()
+			add_child(mmi)
+			buckets.append(mmi)
+		_crowd_buckets.append({"node": buckets, "c": c, "count": count})
+
+
+## Townsfolk drift about their knot: a slow wander, each on his own
+## clock, so a crowd looks like people waiting rather than a formation.
+func _update_crowds() -> void:
+	var hidden := Transform3D(Basis.IDENTITY.scaled(Vector3(0.001, 0.001, 0.001)),
+		Vector3(0, -10, 0))
+	for knot in _crowd_buckets:
+		var buckets: Array = knot["node"]
+		var c: Dictionary = knot["c"]
+		var count: int = knot["count"]
+		var counts := PackedInt32Array()
+		counts.resize(buckets.size())
+		for i in count:
+			var h1 := float((i * 2654435761) % 1000) / 1000.0
+			var h2 := float((i * 1103515245 + 12345) % 1000) / 1000.0
+			# A slow orbit of his own patch of street, at his own pace.
+			var speed := 0.10 + h1 * 0.16
+			var ang := h1 * TAU + _anim_time * speed * (1.0 if h2 > 0.5 else -1.0)
+			var rr: float = float(c["r"]) * (0.30 + 0.55 * h2)
+			var x := float(c["x"]) + cos(ang) * rr
+			var z := float(c["z"]) + sin(ang) * rr
+			# Walking poses while he drifts, standing while he pauses.
+			var pausing := sin(_anim_time * 0.4 + h1 * 6.3) > 0.45
+			var pose := FigureLib.Pose.STAND
+			if not pausing:
+				pose = FigureLib.Pose.MARCH_A if int(_anim_time * 1.6 + h1 * 3.0) % 2 == 0 \
+					else FigureLib.Pose.MARCH_B
+			var slot := counts[pose]
+			counts[pose] = slot + 1
+			var facing := ang + PI / 2.0 if not pausing else h2 * TAU
+			var sy := 0.93 + h2 * 0.13
+			var mm: MultiMesh = (buckets[pose] as MultiMeshInstance3D).multimesh
+			mm.set_instance_transform(slot, Transform3D(
+				Basis.IDENTITY.rotated(Vector3.UP, facing).scaled(Vector3(1.0, sy, 1.0)),
+				Vector3(x, 0.85 * sy, z)))
+			var wear := 0.86 + h1 * 0.26
+			mm.set_instance_color(slot, Color(wear, wear, wear))
+		for b in buckets.size():
+			var mmb: MultiMesh = (buckets[b] as MultiMeshInstance3D).multimesh
+			for k in range(counts[b], mmb.instance_count):
+				mmb.set_instance_transform(k, hidden)
 
 
 func _build_actors() -> void:
 	_avatar = MeshInstance3D.new()
-	(_avatar as MeshInstance3D).mesh = FigureLib.build_civilian(
-		Color(0.26, 0.24, 0.30), FigureLib.Pose.STAND, FigureLib.skin_for(2))
+	_avatar_poses = FigureLib.build_pose_set(Color(0.26, 0.24, 0.30), "civilian",
+		FigureLib.skin_for(2))
+	(_avatar as MeshInstance3D).mesh = _avatar_poses[FigureLib.Pose.STAND]
 	(_avatar as MeshInstance3D).material_override = FigureLib.figure_material()
 	add_child(_avatar)
 	for w in sim.watchers:
@@ -302,6 +359,18 @@ func _update_avatar() -> void:
 	_avatar.position = Vector3(x, 0.85 * crouch, z)
 	_avatar.rotation.y = sim.av_heading
 	_avatar.scale = Vector3(1.0, crouch, 1.0)
+	# He walks rather than glides: pose-swap on his own gait clock, at
+	# the cadence his stance implies.
+	var moving := absf(sim.intent_x) + absf(sim.intent_z) > 0.02
+	var pose := FigureLib.Pose.STAND
+	if moving:
+		var rate := 2.9 if sim.av_stance == WorldSim.Stance.RUN else \
+			(1.3 if sim.av_stance == WorldSim.Stance.CROUCH else 1.9)
+		pose = FigureLib.Pose.MARCH_A if int(_anim_time * rate) % 2 == 0 \
+			else FigureLib.Pose.MARCH_B
+	if pose != _avatar_pose:
+		_avatar_pose = pose
+		(_avatar as MeshInstance3D).mesh = _avatar_poses[pose]
 
 
 func _update_watchers() -> void:
@@ -318,18 +387,39 @@ func _update_watchers() -> void:
 		# The cone warms as he grows sure of you.
 		var s: float = float(w["suspicion"])
 		var mat := cone.material_override as StandardMaterial3D
+		# Surveying the street makes every eye on it plain.
 		mat.albedo_color = Color(1.0, 0.85 - s * 0.55, 0.5 - s * 0.45,
-			0.08 + s * 0.20)
+			0.08 + s * 0.20 + _survey * 0.22)
 
 
+## Over-the-shoulder, close and low, with the small dishonesties that
+## make a camera feel operated rather than mounted: it leads the walk,
+## widens on the run, drops with the crouch, breathes on a slow cycle,
+## and pulls in when the street is reading you.
 func _update_camera(delta: float) -> void:
-	# Over-the-shoulder, high enough to read the street (docs/12 §5.3:
-	# third person, because the picture is the game).
 	var target := _avatar.position
-	var back := Vector3(sin(_cam_yaw), 0.0, cos(_cam_yaw)) * 9.5
-	var want := target - back + Vector3(0.0, 6.2, 0.0)
-	_cam.position = _cam.position.lerp(want, clampf(delta * 4.0, 0.0, 1.0))
-	_cam.look_at(target + Vector3(0.0, 1.1, 0.0), Vector3.UP)
+	var t := clampf(delta * 4.5, 0.0, 1.0)
+	var stance_drop := 0.55 if sim.av_stance == WorldSim.Stance.CROUCH else 0.0
+	var heat := sim.heat()
+	# Attention pulls the lens in — being watched should feel closer.
+	var back := CAM_BACK - heat * 0.9 - _survey * 0.8
+	var back_v := Vector3(sin(_cam_yaw), 0.0, cos(_cam_yaw))
+	var side_v := Vector3(cos(_cam_yaw), 0.0, -sin(_cam_yaw))
+	# Lead the walk: the camera looks a little where he is going.
+	var lead := Vector3(sim.intent_x, 0.0, sim.intent_z) * 1.4
+	var want := target - back_v * back + side_v * CAM_SIDE \
+		+ Vector3(0.0, CAM_HEIGHT - stance_drop, 0.0) + lead * 0.35
+	# A slow handheld breath, never a shake.
+	want += Vector3(sin(_anim_time * 0.6) * 0.055, sin(_anim_time * 0.83) * 0.04, 0.0)
+	_cam.position = _cam.position.lerp(want, t)
+	var look := target + Vector3(0.0, 1.15 - stance_drop * 0.5, 0.0) + lead
+	_cam.look_at(look, Vector3.UP)
+	var want_fov := BASE_FOV
+	if sim.av_stance == WorldSim.Stance.RUN:
+		want_fov = RUN_FOV
+	elif _survey > 0.01:
+		want_fov = BASE_FOV - 6.0 * _survey    # the world narrows as he reads it
+	_cam.fov = lerpf(_cam.fov, want_fov, t)
 
 
 func _update_hud() -> void:
@@ -355,7 +445,9 @@ func _update_hud() -> void:
 		lines.append("SEIZED — taken up in the street." if sim.outcome == "seized"
 			else "AWAY — the word is across the water.")
 		lines.append("[ENTER] again   [ESC] to the field")
+	elif _survey > 0.5:
+		lines.append("Reading the street — every eye on it is plain.")
 	else:
-		lines.append("[W A S D] walk   [SHIFT] run   [CTRL] crouch   [Q/E] camera")
+		lines.append("[W A S D] walk  [SHIFT] run  [CTRL] crouch  [TAB] survey  [Q/E] camera")
 	_hud.text = "\n".join(lines)
 	_log_label.text = "\n".join(sim.log_lines.slice(maxi(0, sim.log_lines.size() - 6)))

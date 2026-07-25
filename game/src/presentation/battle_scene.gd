@@ -289,14 +289,16 @@ func _build_environment() -> void:
 		fog_density = 0.0030
 	elif _scenario == "lexington":
 		# 05:00, April 19: sun barely up, ground mist, long cold shadows.
-		env.background_color = Color(0.62, 0.60, 0.58)
-		env.ambient_light_color = Color(0.62, 0.66, 0.78)
-		env.ambient_light_energy = 0.55
-		sun.rotation_degrees = Vector3(-8.0, 55.0, 0.0)   # raking dawn light
-		sun.light_energy = 0.85
+		env.background_color = Color(0.64, 0.63, 0.62)
+		env.ambient_light_color = Color(0.66, 0.70, 0.82)
+		env.ambient_light_energy = 0.72
+		sun.rotation_degrees = Vector3(-12.0, 55.0, 0.0)  # raking dawn light
+		sun.light_energy = 1.05
 		sun.light_color = Color(1.0, 0.86, 0.70)
-		fog_color = Color(0.72, 0.71, 0.70)
-		fog_density = 0.0075                              # dawn mist on the Green
+		fog_color = Color(0.74, 0.73, 0.71)
+		# Dawn mist, but a mist you can fight in: capture 19 filmed at
+		# 0.0075 and the Green was a grey wash 60 yards out.
+		fog_density = 0.0026
 	elif _scenario == "battle_road":
 		# Mid-afternoon, high spring sun, dust and powder smoke hanging.
 		env.background_color = Color(0.70, 0.74, 0.79)

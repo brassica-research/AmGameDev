@@ -11,6 +11,9 @@ extends Node3D
 ##   Q / E              swing the camera
 ##   TAB (hold)         survey — take the measure of the street
 ##   ENTER              restart · ESC back to the battle
+## (The keys are listed here rather than painted permanently on the
+## courier's card — the paper is for what is happening, not for a
+## reference sheet.)
 ##
 ## Args after `--`:
 ##   --world=<id>       which data/world/<id>.json to walk
@@ -340,23 +343,22 @@ func _cone_mesh(angle: float, reach: float) -> ArrayMesh:
 func _build_hud(title: String) -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
-	var card := UIKit.document(title, 5, 470.0)
+	var card := UIKit.document(title, 5, 360.0)
 	card.position = Vector2(16.0, 14.0)
 	layer.add_child(card)
 	_title = card.get_meta("title")
-	(_title as Label).add_theme_font_size_override("font_size", 18)
+	(_title as Label).add_theme_font_size_override("font_size", 15)
 	_hud = card.get_meta("body")
 	# The seal only appears when the street has taken an interest.
 	_alarm_seal = UIKit.seal("")
-	_alarm_seal.position = Vector2(16.0, 150.0)
+	_alarm_seal.position = Vector2(16.0, 122.0)
 	_alarm_seal.visible = false
 	layer.add_child(_alarm_seal)
-	var journal := UIKit.document("THE NIGHT'S DOINGS", 17, 690.0)
-	journal.position = Vector2(16.0, 440.0)
+	var journal := UIKit.document("THE NIGHT'S DOINGS", 17, 520.0)
+	journal.position = Vector2(16.0, 540.0)
 	layer.add_child(journal)
 	_log_label = journal.get_meta("body")
-	(journal.get_meta("title") as Label).add_theme_font_size_override("font_size", 15)
-	_log_label.add_theme_font_size_override("font_size", 14)
+	_log_label.add_theme_font_size_override("font_size", 13)
 	_log_label.add_theme_color_override("font_color", UIKit.INK_FADED)
 
 
@@ -458,8 +460,6 @@ func _update_hud() -> void:
 		lines.append("[ENTER] again   [ESC] to the field")
 	elif _survey > 0.5:
 		lines.append("Reading the street — every eye on it is plain.")
-	else:
-		lines.append("[W A S D] walk  [SHIFT] run  [CTRL] crouch  [TAB] survey  [Q/E] camera")
 	_hud.text = "\n".join(lines)
 	if _alarm_seal != null:
 		var seal_text := ""
@@ -472,4 +472,4 @@ func _update_hud() -> void:
 		_alarm_seal.visible = seal_text != ""
 		if _alarm_seal.visible:
 			(_alarm_seal.get_meta("body") as Label).text = seal_text
-	_log_label.text = "\n".join(sim.log_lines.slice(maxi(0, sim.log_lines.size() - 6)))
+	_log_label.text = "\n".join(sim.log_lines.slice(maxi(0, sim.log_lines.size() - 4)))

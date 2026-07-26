@@ -57,12 +57,15 @@ static func parchment_texture(seed_v := 7, size := 192) -> ImageTexture:
 
 ## A parchment panel: the paper, a hairline ink border, and a soft drop
 ## shadow so it sits ON the world rather than in it.
-static func panel_style(seed_v := 7) -> StyleBoxTexture:
+static func panel_style(seed_v := 7, opacity := 0.78) -> StyleBoxTexture:
 	var sb := StyleBoxTexture.new()
 	sb.texture = parchment_texture(seed_v)
 	sb.set_texture_margin_all(10.0)
-	sb.set_content_margin_all(14.0)
-	sb.modulate_color = Color(1, 1, 1, 0.96)
+	sb.set_content_margin_all(9.0)
+	# The paper is an annotation on the picture, not a lid over it: a
+	# capture-28 note — opaque panels ate a third of the frame and
+	# flattened everything behind them.
+	sb.modulate_color = Color(1, 1, 1, opacity)
 	return sb
 
 
@@ -104,20 +107,25 @@ static func ink_label(text := "", weight := "body") -> Label:
 ## A finished panel with a title, a rule, and a body label — the shape
 ## nearly every readout in this game wants. Returns the panel; the body
 ## label is `panel.get_meta("body")`, the title `panel.get_meta("title")`.
-static func document(title: String, seed_v := 7, width := 430.0) -> PanelContainer:
+static func document(title: String, seed_v := 7, width := 430.0,
+		compact := true, opacity := 0.78) -> PanelContainer:
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", panel_style(seed_v))
+	panel.add_theme_stylebox_override("panel", panel_style(seed_v, opacity))
 	panel.custom_minimum_size = Vector2(width, 0.0)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 4)
+	col.add_theme_constant_override("separation", 3)
 	panel.add_child(col)
 	var head := ink_label(title, "title")
+	if compact:
+		head.add_theme_font_size_override("font_size", 14)
 	col.add_child(head)
 	var rule := Panel.new()
 	rule.add_theme_stylebox_override("panel", rule_style())
 	rule.custom_minimum_size = Vector2(0.0, 1.0)
 	col.add_child(rule)
 	var body := ink_label("", "body")
+	if compact:
+		body.add_theme_font_size_override("font_size", 14)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(body)
 	panel.set_meta("body", body)

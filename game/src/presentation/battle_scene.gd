@@ -10,6 +10,8 @@ extends Node3D
 ##   F toggle volley fire <-> fire at will
 ##   C fix bayonets & charge · R rally
 ##   V toggle cinematic camera · M memorial book (campaign)
+##   H pin/unpin the officer's hand (the key card, which otherwise
+##     folds away a few seconds in)
 ##   ENTER: campaign — march again after the after-action; demos — restart
 ##
 ## Manual play defaults to the CAMPAIGN: your persistent muster roll
@@ -103,6 +105,9 @@ var _lowfx := false
 var _camera: Camera3D
 var _hud: Label
 var _log_label: Label
+var _help_card: PanelContainer
+var _help_age := 0.0
+var _help_pinned := false
 
 
 func _ready() -> void:
@@ -194,6 +199,7 @@ func _process(delta: float) -> void:
 				GameState.rest_and_refit(GameState.CAMP_DAYS, true)
 				get_tree().reload_current_scene()
 	_update_hud()
+	_update_help(delta)
 	if _quit_after > 0.0:
 		_elapsed += delta
 		if sim.over:
@@ -248,6 +254,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				else:
 					_order("volley_fire")
 			KEY_V: _cinematic = not _cinematic
+			KEY_H:
+				_help_pinned = not _help_pinned
+				_help_age = 0.0
+				if _help_card != null:
+					_help_card.visible = true
 			KEY_M:
 				if _campaign:
 					_show_memorial = not _show_memorial
@@ -419,17 +430,26 @@ func _build_smoke() -> void:
 func _build_hud() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
-	var book := UIKit.document("ORDERLY BOOK", 3, 640.0)
+	var book := UIKit.document("ORDERLY BOOK", 3, 430.0)
 	book.position = Vector2(16.0, 14.0)
 	layer.add_child(book)
 	_hud = book.get_meta("body")
-	var occurrences := UIKit.document("OCCURRENCES OF THE DAY", 11, 700.0)
-	occurrences.position = Vector2(16.0, 432.0)
+	var occurrences := UIKit.document("OCCURRENCES OF THE DAY", 11, 520.0)
+	occurrences.position = Vector2(16.0, 508.0)
 	layer.add_child(occurrences)
 	_log_label = occurrences.get_meta("body")
-	(occurrences.get_meta("title") as Label).add_theme_font_size_override("font_size", 15)
-	_log_label.add_theme_font_size_override("font_size", 14)
+	_log_label.add_theme_font_size_override("font_size", 13)
 	_log_label.add_theme_color_override("font_color", UIKit.INK_FADED)
+	# The keys live on their own card and fade out of the way — a
+	# permanent keybind list is a debug overlay wearing a costume.
+	_help_card = UIKit.document("THE OFFICER'S HAND", 23, 430.0)
+	_help_card.position = Vector2(16.0, 132.0)
+	(_help_card.get_meta("body") as Label).text = \
+		"1 advance · 2 halt · 3 withdraw\n" \
+		+ "SPACE hold to present, release to FIRE\n" \
+		+ "F volley or fire at will · C charge · R rally\n" \
+		+ "V camera · wheel zoom · H these notes"
+	layer.add_child(_help_card)
 
 
 # --- per-frame updates ------------------------------------------------
@@ -796,6 +816,18 @@ func _cut(shot: int) -> void:
 
 # --- HUD ---------------------------------------------------------------
 
+## The notes lie open for a few seconds, then fold away. H brings them
+## back and pins them.
+func _update_help(delta: float) -> void:
+	if _help_card == null:
+		return
+	_help_age += delta
+	if _help_pinned:
+		_help_card.modulate.a = 1.0
+		return
+	_help_card.modulate.a = clampf(1.0 - (_help_age - 7.0) / 1.5, 0.0, 1.0)
+	_help_card.visible = _help_card.modulate.a > 0.01
+
 func _update_hud() -> void:
 	var pc := sim.get_company(PLAYER_ID)
 	var foe := sim.nearest_enemy(pc) if pc != null else null
@@ -807,7 +839,6 @@ func _update_hud() -> void:
 	elif sim.night:
 		wx_note = "   |   NIGHT — firing at shapes"
 	lines.append("LET TYRANTS SHAKE — M2 vertical slice" + wx_note)
-	lines.append("[1] advance  [2] halt  [3] withdraw   [SPACE hold] present -> [release] FIRE   [F] volley/at-will  [C] charge  [R] rally  [V] camera  [wheel] zoom  [ENTER] restart")
 	if sim.night:
 		var alarm := "THE ALARM IS RAISED" if sim.alarm_raised else "silence — the columns are undiscovered"
 		lines.append("BAYONETS ONLY — night storm, Stony Point pattern   |   %s" % alarm)
@@ -897,7 +928,7 @@ func _update_hud() -> void:
 				entry.get("home_town", "?"), entry.get("fate", "?")])
 		lines.append("Mustered out and gone home: %d" % GameState.roster.mustered_out.size())
 	_hud.text = "\n".join(lines)
-	var tail := sim.battle_log.slice(maxi(0, sim.battle_log.size() - 8))
+	var tail := sim.battle_log.slice(maxi(0, sim.battle_log.size() - 5))
 	_log_label.text = "\n".join(tail)
 
 

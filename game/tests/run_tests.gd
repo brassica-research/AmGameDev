@@ -731,6 +731,29 @@ func _test_art_form_pass() -> void:
 			and look.hour_for_scenario("battle_road", false) == "afternoon"
 			and look.hour_for_scenario("field", true) == "night",
 			"each scenario is fought at its own hour")
+	# The parchment UI (docs/04: the interface is a document).
+	var ui: Variant = load("res://src/presentation/ui_kit.gd")
+	check(ui != null, "ui_kit parses")
+	if ui != null:
+		var tex: ImageTexture = ui.parchment_texture(3, 64)
+		check(tex != null and tex.get_width() == 64, "parchment is made, not loaded")
+		var img := tex.get_image()
+		# Handled edges must be darker than the middle of the sheet.
+		var middle := img.get_pixel(32, 32).get_luminance()
+		var corner := img.get_pixel(2, 2).get_luminance()
+		check(corner < middle, "the sheet is darker where it has been handled")
+		var doc: PanelContainer = ui.document("ORDERLY BOOK", 3)
+		check(doc.get_meta("body") is Label and doc.get_meta("title") is Label,
+			"a document has a title and a body to write in")
+		check((doc.get_meta("title") as Label).text == "ORDERLY BOOK",
+			"the heading is the document's name")
+		var seal: PanelContainer = ui.seal("CHALLENGED")
+		check((seal.get_meta("body") as Label).text == "CHALLENGED",
+			"the seal carries its one word")
+		check(ui.INK.get_luminance() < ui.PARCHMENT.get_luminance(),
+			"ink is darker than paper")
+		doc.free()
+		seal.free()
 	# EVERY script must parse. Hand-listing the scenes let world_scene.gd
 	# ship a parse error: the scene then ran with no script at all, so
 	# _process never fired, --quit-after never quit, and three capture

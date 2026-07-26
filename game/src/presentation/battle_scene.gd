@@ -41,6 +41,7 @@ const RANK_SPACING := 0.9
 
 const FigureLib := preload("res://src/presentation/figure_lib.gd")
 const LookDev := preload("res://src/presentation/look_dev.gd")
+const UIKit := preload("res://src/presentation/ui_kit.gd")
 const ColonialLib := preload("res://src/presentation/colonial_lib.gd")
 
 # The form-pass wardrobe (docs/04): the King's regulars in red; the
@@ -413,16 +414,22 @@ func _build_smoke() -> void:
 		_smoke_boxes.append(mi)
 
 
+## The interface is a document (docs/04): an officer's orderly book at
+## the top of the field, the day's occurrences written up beneath it.
 func _build_hud() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
-	_hud = Label.new()
-	_hud.position = Vector2(14.0, 10.0)
-	layer.add_child(_hud)
-	_log_label = Label.new()
-	_log_label.position = Vector2(14.0, 460.0)
-	_log_label.modulate = Color(1, 1, 1, 0.75)
-	layer.add_child(_log_label)
+	var book := UIKit.document("ORDERLY BOOK", 3, 640.0)
+	book.position = Vector2(16.0, 14.0)
+	layer.add_child(book)
+	_hud = book.get_meta("body")
+	var occurrences := UIKit.document("OCCURRENCES OF THE DAY", 11, 700.0)
+	occurrences.position = Vector2(16.0, 432.0)
+	layer.add_child(occurrences)
+	_log_label = occurrences.get_meta("body")
+	(occurrences.get_meta("title") as Label).add_theme_font_size_override("font_size", 15)
+	_log_label.add_theme_font_size_override("font_size", 14)
+	_log_label.add_theme_color_override("font_color", UIKit.INK_FADED)
 
 
 # --- per-frame updates ------------------------------------------------

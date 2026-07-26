@@ -47,6 +47,13 @@ def changed_files(base: str) -> list[str]:
         ["git", "diff", "--name-only", "HEAD"],
         capture_output=True, text=True, check=True,
     ).stdout.split()
+    # ...and brand-new files, which no diff will show. A whole new
+    # presentation module is exactly the kind of change worth filming,
+    # and the first version of this script would have missed it.
+    out += subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard"],
+        capture_output=True, text=True, check=True,
+    ).stdout.split()
     return sorted(set(out))
 
 

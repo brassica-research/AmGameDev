@@ -23,6 +23,7 @@ extends Node3D
 const FigureLib := preload("res://src/presentation/figure_lib.gd")
 const ColonialLib := preload("res://src/presentation/colonial_lib.gd")
 const LookDev := preload("res://src/presentation/look_dev.gd")
+const UIKit := preload("res://src/presentation/ui_kit.gd")
 const WORLD_DIR := "res://data/world"
 
 # The camera rides close and low, over the shoulder — the open-world
@@ -57,6 +58,7 @@ var _lowfx := false
 ## Presentation only; the sim neither knows nor cares (docs/13 §4).
 var _survey := 0.0
 var _crowd_buckets: Array[Dictionary] = []
+var _alarm_seal: PanelContainer
 var _avatar_poses: Array[ArrayMesh] = []
 var _avatar_pose := 0
 
@@ -333,20 +335,29 @@ func _cone_mesh(angle: float, reach: float) -> ArrayMesh:
 	return st.commit()
 
 
+## In the free world the document is a courier's scrap of paper: where
+## he is going, and how the street is regarding him.
 func _build_hud(title: String) -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
-	_title = Label.new()
-	_title.position = Vector2(14, 10)
-	_title.text = title
-	layer.add_child(_title)
-	_hud = Label.new()
-	_hud.position = Vector2(14, 36)
-	layer.add_child(_hud)
-	_log_label = Label.new()
-	_log_label.position = Vector2(14, 470)
-	_log_label.modulate = Color(1, 1, 1, 0.8)
-	layer.add_child(_log_label)
+	var card := UIKit.document(title, 5, 470.0)
+	card.position = Vector2(16.0, 14.0)
+	layer.add_child(card)
+	_title = card.get_meta("title")
+	(_title as Label).add_theme_font_size_override("font_size", 18)
+	_hud = card.get_meta("body")
+	# The seal only appears when the street has taken an interest.
+	_alarm_seal = UIKit.seal("")
+	_alarm_seal.position = Vector2(16.0, 150.0)
+	_alarm_seal.visible = false
+	layer.add_child(_alarm_seal)
+	var journal := UIKit.document("THE NIGHT'S DOINGS", 17, 690.0)
+	journal.position = Vector2(16.0, 440.0)
+	layer.add_child(journal)
+	_log_label = journal.get_meta("body")
+	(journal.get_meta("title") as Label).add_theme_font_size_override("font_size", 15)
+	_log_label.add_theme_font_size_override("font_size", 14)
+	_log_label.add_theme_color_override("font_color", UIKit.INK_FADED)
 
 
 # --- per-frame ---------------------------------------------------------
@@ -450,4 +461,15 @@ func _update_hud() -> void:
 	else:
 		lines.append("[W A S D] walk  [SHIFT] run  [CTRL] crouch  [TAB] survey  [Q/E] camera")
 	_hud.text = "\n".join(lines)
+	if _alarm_seal != null:
+		var seal_text := ""
+		if sim.outcome == "seized":
+			seal_text = "TAKEN UP"
+		elif heat >= WorldSim.ALERT_AT:
+			seal_text = "RECOGNIZED — RUN"
+		elif heat >= WorldSim.CHALLENGE_AT:
+			seal_text = "CHALLENGED"
+		_alarm_seal.visible = seal_text != ""
+		if _alarm_seal.visible:
+			(_alarm_seal.get_meta("body") as Label).text = seal_text
 	_log_label.text = "\n".join(sim.log_lines.slice(maxi(0, sim.log_lines.size() - 6)))

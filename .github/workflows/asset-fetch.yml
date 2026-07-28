@@ -61,6 +61,15 @@ jobs:
               continue
             fi
             find /tmp/pack -iname '*.glb' -exec cp {} "$DEST/" \;
+            # The models reference their textures by relative path, so a
+            # models-only copy imports as 72 missing-file errors. Bring the
+            # texture folders along.
+            find /tmp/pack -type d -iname 'Textures' | while read -r texdir; do
+              mkdir -p "$DEST/Textures"
+              find "$texdir" -type f \( -iname '*.png' -o -iname '*.jpg' \) \
+                -exec cp {} "$DEST/Textures/" \;
+            done
+            echo "   $(ls "$DEST/Textures" 2>/dev/null | wc -l) textures kept"
             {
               echo "Source: $PAGE"
               echo "Downloaded: $ZIP_URL"

@@ -669,7 +669,11 @@ func _test_art_form_pass() -> void:
 		if child is MultiMeshInstance3D:
 			batched += 1
 			lit_panes += (child as MultiMeshInstance3D).multimesh.instance_count
-	check(batched > 0 and batched <= 2, "windows batch into at most two draw calls")
+	# Lit, dark and shuttered — three classes since the joinery pass, so
+	# three is the ceiling. (This assertion said two and went red for
+	# four runs: a stale test is a broken signal, docs/14 §2.)
+	check(batched > 0 and batched <= 3,
+		"windows batch into at most three draw calls (%d)" % batched)
 	check(lit_panes >= 8, "the house has windows (%d panes)" % lit_panes)
 	var ground: StandardMaterial3D = col_lib.ground_material("snow")
 	check(ground.albedo_texture != null and ground.uv1_triplanar, "snow ground is textured")

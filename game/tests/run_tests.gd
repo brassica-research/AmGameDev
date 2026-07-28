@@ -721,11 +721,11 @@ func _test_art_form_pass() -> void:
 		var n: Vector3 = terra.normal_at(20.0, 40.0, 1.0)
 		check(n.y > 0.7 and absf(n.length() - 1.0) < 0.01, "slopes have sane normals")
 		# Cover must vary — the whole complaint was one texture everywhere.
-		var tones := {}
+		var cover_tones := {}
 		for i in 30:
 			var c: Color = terra.cover_at(float(i) * 13.0, float(i) * 17.0, "field", 1.0)
-			tones[Vector3i(int(c.r * 40.0), int(c.g * 40.0), int(c.b * 40.0))] = true
-		check(tones.size() >= 8, "the field is many colours, not one (%d tones)" % tones.size())
+			cover_tones[Vector3i(int(c.r * 40.0), int(c.g * 40.0), int(c.b * 40.0))] = true
+		check(cover_tones.size() >= 8, "the field is many colours, not one (%d tones)" % cover_tones.size())
 		var stage2 := Node3D.new()
 		terra.build_ground(stage2, Vector2(60.0, 60.0), "field", 1.0, 10.0)
 		check(stage2.get_child_count() == 1, "the ground is one mesh")

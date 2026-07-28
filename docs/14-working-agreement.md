@@ -82,8 +82,12 @@ expired.
 ## The loop, in order
 
 1. Make a change.
-2. Run the static pre-flight (JSON/YAML parse, `res://` paths, the
-   `:=` type-inference hazard scan).
+2. Run the static pre-flight: `python3 tools/preflight_gd.py` (plus
+   JSON/YAML parse and `res://` path checks). It catches the two parse
+   errors headless Godot has caught for us the expensive way — `:=`
+   that cannot infer a type, and a declaration shadowing a live one in
+   an enclosing scope. Both cost a full CI cycle each; the script costs
+   a second.
 3. Push. **Read CI's verdict.**
 4. `tools/capture_needed.py` → film only if it says so.
 5. Delegate the wait; deliver the film with an honest read of what is

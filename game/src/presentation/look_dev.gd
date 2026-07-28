@@ -17,10 +17,10 @@ extends RefCounted
 ## Named hours. Each is a full grade: sky, light, fog, and exposure.
 const HOURS := {
 	"dawn": {                                  # Lexington, 05:00, April 19
-		"sky_top": Color(0.30, 0.40, 0.62), "sky_horizon": Color(0.86, 0.74, 0.62),
+		"sky_top": Color(0.30, 0.40, 0.62), "sky_horizon": Color(0.78, 0.72, 0.66),
 		"ground": Color(0.24, 0.24, 0.26),
 		"sun_angle": Vector3(-12.0, 55.0, 0.0), "sun_energy": 1.15,
-		"sun_color": Color(1.0, 0.83, 0.66),
+		"sun_color": Color(1.0, 0.88, 0.76),
 		"ambient": Color(0.50, 0.57, 0.74), "ambient_energy": 0.42,
 		"fog": Color(0.60, 0.58, 0.58), "fog_density": 0.0014,
 		"exposure": 0.90,

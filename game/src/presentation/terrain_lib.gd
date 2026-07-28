@@ -21,8 +21,8 @@ extends RefCounted
 ##   const TerrainLib := preload("res://src/presentation/terrain_lib.gd")
 
 # The palette of a New England field, mid-April.
-const GRASS_NEW := Color(0.27, 0.33, 0.17)      # what has come back
-const GRASS_DEAD := Color(0.40, 0.37, 0.22)     # last year's, still lying
+const GRASS_NEW := Color(0.24, 0.32, 0.16)      # what has come back
+const GRASS_DEAD := Color(0.34, 0.33, 0.20)     # last year's, bleached but not sand
 const EARTH := Color(0.29, 0.23, 0.16)          # scoured ridge, cart rut
 const MUD := Color(0.21, 0.17, 0.13)            # the hollows, and the road
 const MOSS := Color(0.20, 0.28, 0.16)
@@ -33,10 +33,14 @@ const SNOW_PACK := Color(0.62, 0.64, 0.70)      # town snow, trampled grey
 ## top, and a gentle fall toward the edges so the field does not read as
 ## a tabletop. `relief` scales the whole thing (towns want less).
 static func height_at(x: float, z: float, relief := 1.0) -> float:
-	var h := sin(x * 0.021 + 1.3) * cos(z * 0.017 - 0.4) * 2.6      # the swells
-	h += sin(x * 0.058 - 0.7) * 0.55                                # a ridge line
-	h += cos(z * 0.047 + 2.1) * 0.65
-	h += sin((x + z) * 0.11) * 0.22                                 # the ripple
+	# Capture 30 note: at ±2.6 yards over a 400-yard field the land still
+	# read as a table. Drumlins are 10-30 yards of rise over a couple of
+	# hundred — this is nearer the truth and, more to the point, visible.
+	var h := sin(x * 0.026 + 1.3) * cos(z * 0.019 - 0.4) * 6.2      # the swells
+	h += sin(x * 0.061 - 0.7) * 1.6                                 # a ridge line
+	h += cos(z * 0.043 + 2.1) * 1.9
+	h += sin((x + z) * 0.105) * 0.55                                # the ripple
+	h += cos(x * 0.17 - 1.1) * sin(z * 0.15) * 0.30                 # tussocks
 	return h * relief
 
 
@@ -66,14 +70,18 @@ static func cover_at(x: float, z: float, kind: String, relief := 1.0) -> Color:
 	var slope := 1.0 - n.y                       # 0 flat, ~0.3 steep here
 	var h := height_at(x, z, relief)
 	# Coarse patches: where the field was grazed, where it lay wet.
-	var patch := sin(x * 0.037 + 2.2) * cos(z * 0.041 - 1.1)
+	# Several frequencies, or the field reads as three enormous zones
+	# with hard seams between them.
+	var patch := sin(x * 0.037 + 2.2) * cos(z * 0.041 - 1.1) * 0.55
+	patch += sin(x * 0.115 - 0.6) * cos(z * 0.098 + 1.7) * 0.28
+	patch += sin((x - z) * 0.24 + 0.3) * 0.17
 	var wet := clampf(-h * 0.35 + patch * 0.4, 0.0, 1.0)
-	var c := GRASS_DEAD.lerp(GRASS_NEW, clampf(0.35 + patch * 0.5, 0.0, 1.0))
+	var c := GRASS_DEAD.lerp(GRASS_NEW, clampf(0.55 + patch * 0.5, 0.0, 1.0))
 	c = c.lerp(MOSS, wet * 0.45)                 # hollows hold water
 	c = c.lerp(EARTH, clampf(slope * 3.2, 0.0, 0.7))   # the wind scours ridges
 	# A fine grain so no two square yards match.
 	var grain := _hash01(int(x * 3.0) * 7919 + int(z * 3.0) * 104729)
-	return c.darkened((grain - 0.5) * 0.14)
+	return c.darkened((grain - 0.5) * 0.20)
 
 
 ## Build the ground as a real mesh: a displaced grid carrying its cover

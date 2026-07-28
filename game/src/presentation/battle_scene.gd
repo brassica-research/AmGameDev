@@ -347,7 +347,7 @@ func _build_field() -> void:
 	# Ground with relief and cover, not a plane with one texture: men,
 	# walls and trees all ask terrain_lib where the earth is.
 	TerrainLib.build_ground(self, Vector2(160.0, 420.0),
-		"night_field" if sim.night else "field", RELIEF)
+		"night_field" if sim.night else "field", RELIEF, 3.5)
 	TerrainLib.scatter(self, Vector2(150.0, 400.0), 90, RELIEF, 3)
 	# Field dressing, presentation-only: bare trees beyond the flanks and
 	# a split-rail fence line either side of the fighting ground.

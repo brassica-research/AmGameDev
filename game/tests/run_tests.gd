@@ -702,6 +702,51 @@ func _test_art_form_pass() -> void:
 	col_lib.make_bare_tree(grove, Vector3(5, 0, 5), 42)
 	check(grove.get_child_count() == 1, "bare tree builds with or without third-party packs")
 	grove.free()
+	# Ground that is ground: relief, and cover that varies across it.
+	var terra: Variant = load("res://src/presentation/terrain_lib.gd")
+	check(terra != null, "terrain_lib parses")
+	if terra != null:
+		var heights: Array[float] = []
+		for i in 40:
+			heights.append(terra.height_at(float(i) * 11.0, float(i) * 7.0, 1.0))
+		var lo := heights[0]
+		var hi := heights[0]
+		for v in heights:
+			lo = minf(lo, v)
+			hi = maxf(hi, v)
+		check(hi - lo > 1.5, "the land actually rolls (%.1f yd of relief)" % (hi - lo))
+		check(absf(terra.height_at(12.0, 34.0, 1.0) - terra.height_at(12.0, 34.0, 1.0)) < 0.0001,
+			"the same spot is the same height every time")
+		check(terra.height_at(12.0, 34.0, 0.0) == 0.0, "relief 0 gives flat ground")
+		var n: Vector3 = terra.normal_at(20.0, 40.0, 1.0)
+		check(n.y > 0.7 and absf(n.length() - 1.0) < 0.01, "slopes have sane normals")
+		# Cover must vary — the whole complaint was one texture everywhere.
+		var tones := {}
+		for i in 30:
+			var c: Color = terra.cover_at(float(i) * 13.0, float(i) * 17.0, "field", 1.0)
+			tones[Vector3i(int(c.r * 40.0), int(c.g * 40.0), int(c.b * 40.0))] = true
+		check(tones.size() >= 8, "the field is many colours, not one (%d tones)" % tones.size())
+		var stage2 := Node3D.new()
+		terra.build_ground(stage2, Vector2(60.0, 60.0), "field", 1.0, 10.0)
+		check(stage2.get_child_count() == 1, "the ground is one mesh")
+		var gm: MeshInstance3D = stage2.get_child(0)
+		check(gm.mesh.get_surface_count() == 1 and \
+			(gm.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() > 100,
+			"and it is a real displaced grid")
+		stage2.free()
+	# Windows must be joinery, not a coloured box.
+	if col_lib != null:
+		var win: ArrayMesh = col_lib.window_mesh("lit")
+		var wv: PackedVector3Array = win.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+		check(wv.size() > 200, "a window has frame, sill and muntins (%d verts)" % wv.size())
+		var wc: PackedColorArray = win.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+		var wtones := {}
+		for c in wc:
+			wtones[Vector3i(int(c.r * 20.0), int(c.g * 20.0), int(c.b * 20.0))] = true
+		check(wtones.size() >= 3, "glass, frame and muntin are different things")
+		check(col_lib.window_mesh("shuttered").surface_get_arrays(0)[Mesh.ARRAY_VERTEX].size()
+			> wv.size(), "a shuttered window carries its boards")
+
 	# The house look: one graded environment for every scene (docs/06).
 	var look: Variant = load("res://src/presentation/look_dev.gd")
 	check(look != null, "look_dev parses")

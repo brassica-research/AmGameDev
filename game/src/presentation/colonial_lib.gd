@@ -31,6 +31,9 @@ static func _str_hash(s: String) -> int:
 
 # --- textures -----------------------------------------------------------
 
+## Brick, and brick that has stood in weather: soot carried down from
+## the chimneys, salt bloom, a damp dark course near the ground, and no
+## two bricks the same firing.
 static func brick_texture(seed_v: int) -> ImageTexture:
 	var img := Image.create(96, 96, false, Image.FORMAT_RGB8)
 	var mortar := Color(0.44, 0.41, 0.39)
@@ -39,11 +42,26 @@ static func brick_texture(seed_v: int) -> ImageTexture:
 			var row := y / 8
 			var stagger := 7 if row % 2 == 1 else 0
 			var in_mortar := (y % 8 == 0) or ((x + stagger) % 14 == 0)
+			var c: Color
 			if in_mortar:
-				img.set_pixel(x, y, mortar)
+				# Old lime mortar is uneven and dirtier low down.
+				var mj := float(_hash(seed_v + x * 31 + y * 17) % 100) / 100.0
+				c = mortar.darkened(mj * 0.22)
 			else:
 				var j := float(_hash(seed_v + row * 131 + (x + stagger) / 14) % 100) / 100.0
-				img.set_pixel(x, y, Color(0.34 + j * 0.10, 0.17 + j * 0.06, 0.13 + j * 0.04))
+				c = Color(0.34 + j * 0.10, 0.17 + j * 0.06, 0.13 + j * 0.04)
+				# Some bricks were burnt darker in the kiln.
+				if _hash(seed_v + row * 977 + (x + stagger) / 14 * 13) % 100 < 12:
+					c = c.darkened(0.30)
+			# Rain-borne soot streaks, strongest under the eaves.
+			var streak := _hash(seed_v + (x / 3) * 6151) % 100
+			if streak < 26:
+				var down := 1.0 - float(y) / 96.0
+				c = c.darkened(down * 0.30 * (1.0 - float(streak) / 26.0))
+			# The damp course: the bottom of a wall is always darker.
+			if y > 78:
+				c = c.darkened((float(y) - 78.0) / 18.0 * 0.35)
+			img.set_pixel(x, y, c)
 	return ImageTexture.create_from_image(img)
 
 
@@ -97,6 +115,76 @@ static func ground_material(kind: String) -> StandardMaterial3D:
 	return mat
 
 
+
+# --- window joinery ------------------------------------------------------
+
+## One box, flat-shaded, colour baked per vertex (colonial_lib keeps its
+## own copy so it does not depend on the figure library).
+static func _wbox(st: SurfaceTool, color: Color, center: Vector3, size: Vector3) -> void:
+	var a := size / 2.0
+	var faces := [
+		[Vector3(0, 0, 1), [[-1, 1, 1], [1, 1, 1], [1, -1, 1], [-1, -1, 1]]],
+		[Vector3(0, 0, -1), [[1, 1, -1], [-1, 1, -1], [-1, -1, -1], [1, -1, -1]]],
+		[Vector3(1, 0, 0), [[1, 1, 1], [1, 1, -1], [1, -1, -1], [1, -1, 1]]],
+		[Vector3(-1, 0, 0), [[-1, 1, -1], [-1, 1, 1], [-1, -1, 1], [-1, -1, -1]]],
+		[Vector3(0, 1, 0), [[-1, 1, -1], [1, 1, -1], [1, 1, 1], [-1, 1, 1]]],
+		[Vector3(0, -1, 0), [[-1, -1, 1], [1, -1, 1], [1, -1, -1], [-1, -1, -1]]],
+	]
+	for face in faces:
+		var n: Vector3 = face[0]
+		var quad: Array = face[1]
+		var pts: Array[Vector3] = []
+		for sgn in quad:
+			pts.append(center + Vector3(a.x * sgn[0], a.y * sgn[1], a.z * sgn[2]))
+		for tri in [[0, 1, 2], [0, 2, 3]]:
+			for idx in tri:
+				st.set_color(color)
+				st.set_normal(n)
+				st.add_vertex(pts[idx])
+
+
+## A twelve-light sash window: painted frame, projecting sill, a lintel
+## over it, glass set BACK in the reveal, and the muntins that divide the
+## lights. The playtest note was exact — flat coloured boxes on a wall
+## are the single clearest tell that nobody built this house.
+##   kind: "lit" | "dark" | "shuttered"
+static func window_mesh(kind := "dark") -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var w := 0.62
+	var hgt := 0.95
+	var frame := Color(0.74, 0.71, 0.63)          # lead-white paint, dirtied
+	var frame_dark := Color(0.52, 0.49, 0.43)
+	var glass := Color(0.07, 0.09, 0.13)
+	if kind == "lit":
+		glass = Color(1.0, 0.80, 0.42)
+	# The reveal: glass sits 8cm back from the wall face.
+	_wbox(st, glass, Vector3(0, 0, -0.06), Vector3(w - 0.10, hgt - 0.10, 0.02))
+	# Muntins — two vertical, three horizontal: twelve lights.
+	var bar := Color(0.68, 0.65, 0.58) if kind != "lit" else Color(0.80, 0.70, 0.50)
+	for k in 2:
+		var mx := -w / 6.0 + float(k) * (w / 3.0)
+		_wbox(st, bar, Vector3(mx, 0, -0.05), Vector3(0.022, hgt - 0.10, 0.02))
+	for k in 3:
+		var my := -hgt / 4.0 + float(k) * (hgt / 4.0)
+		_wbox(st, bar, Vector3(0, my, -0.05), Vector3(w - 0.10, 0.022, 0.02))
+	# The frame proper.
+	_wbox(st, frame, Vector3(0, hgt / 2.0, 0), Vector3(w, 0.075, 0.10))       # head
+	_wbox(st, frame, Vector3(0, -hgt / 2.0, 0.01), Vector3(w, 0.075, 0.13))   # sill body
+	_wbox(st, frame_dark, Vector3(0, -hgt / 2.0 - 0.045, 0.05),
+		Vector3(w + 0.14, 0.05, 0.20))                                        # projecting sill
+	_wbox(st, frame, Vector3(-w / 2.0, 0, 0), Vector3(0.075, hgt, 0.10))      # jambs
+	_wbox(st, frame, Vector3(w / 2.0, 0, 0), Vector3(0.075, hgt, 0.10))
+	if kind == "shuttered":
+		# Board shutters, one closed across the light.
+		var shut := Color(0.24, 0.30, 0.26)
+		for k in 4:
+			_wbox(st, shut.darkened(0.04 * float(k % 2)),
+				Vector3(-w / 2.0 + 0.09 + float(k) * (w - 0.18) / 3.0, 0, 0.055),
+				Vector3((w - 0.18) / 3.2, hgt - 0.06, 0.035))
+	return st.commit()
+
+
 # --- buildings ----------------------------------------------------------
 
 ## Build a colonial building where the grey prop box stood. `size` is the
@@ -108,7 +196,9 @@ static func make_building(parent: Node3D, prop_name: String, pos: Vector3,
 	var h := _str_hash(prop_name)
 	var root := Node3D.new()
 	root.name = prop_name
-	root.position = Vector3(pos.x, 0.0, pos.z)
+	# Honour the caller's y: on graded ground the foundation follows the
+	# slope. (This used to be hard-zeroed, which floats a house on a hill.)
+	root.position = pos
 	parent.add_child(root)
 	# Walls.
 	var body := MeshInstance3D.new()
@@ -127,18 +217,22 @@ static func make_building(parent: Node3D, prop_name: String, pos: Vector3,
 	body.position = Vector3(0.0, size.y / 2.0, 0.0)
 	root.add_child(body)
 	# Windows: a lit fraction — Boston is home tonight, candles up.
+	# Three classes of window, each its own little building: the glass
+	# glows only in the lit one, and the material carries vertex colour
+	# so frame, muntin and pane all come from one mesh.
+	var win_mat := StandardMaterial3D.new()
+	win_mat.vertex_color_use_as_albedo = true
+	win_mat.albedo_color = Color.WHITE
+	win_mat.roughness = 0.6
 	var lit := StandardMaterial3D.new()
-	lit.albedo_color = Color(0.48, 0.34, 0.15)
+	lit.vertex_color_use_as_albedo = true
+	lit.albedo_color = Color.WHITE
 	lit.emission_enabled = true
-	lit.emission = Color(1.0, 0.70, 0.32)
-	lit.emission_energy_multiplier = 1.05
-	var dark := StandardMaterial3D.new()
-	dark.albedo_color = Color(0.05, 0.06, 0.09)
-	dark.roughness = 0.25
-	var mesh_z := BoxMesh.new()
-	mesh_z.size = Vector3(0.55, 0.85, 0.06)
+	lit.emission = Color(1.0, 0.72, 0.34)
+	lit.emission_energy_multiplier = 0.55
 	var lit_windows: Array[Transform3D] = []
 	var dark_windows: Array[Transform3D] = []
+	var shut_windows: Array[Transform3D] = []
 	var rows := clampi(int((size.y - 1.0) / 1.7), 1, 3)
 	for face in 4:
 		var along_x := face < 2                 # faces 0,1 = ±z walls
@@ -157,20 +251,24 @@ static func make_building(parent: Node3D, prop_name: String, pos: Vector3,
 					if along_x else Vector3(face_sign * (size.x / 2.0 + 0.035), y, along)
 				var xf := Transform3D(Basis.IDENTITY if along_x
 					else Basis(Vector3.UP, PI / 2.0), at)
-				if _hash(h + face * 31 + r * 13 + cidx * 7) % 100 < 28:
+				var roll := _hash(h + face * 31 + r * 13 + cidx * 7) % 100
+				if roll < 24:
 					lit_windows.append(xf)
+				elif roll < 38:
+					shut_windows.append(xf)     # shut against the cold
 				else:
 					dark_windows.append(xf)
 	# Windows as two MultiMeshes, not forty nodes: a town of fifteen
 	# houses was ~900 draw calls, which software GL felt keenly — the
 	# Boston capture ran 2.5x slower per frame than the battlefield.
-	for pair in [[lit_windows, lit], [dark_windows, dark]]:
+	for pair in [[lit_windows, lit, "lit"], [dark_windows, win_mat, "dark"],
+			[shut_windows, win_mat, "shuttered"]]:
 		var xforms: Array = pair[0]
 		if xforms.is_empty():
 			continue
 		var wmm := MultiMesh.new()
 		wmm.transform_format = MultiMesh.TRANSFORM_3D
-		wmm.mesh = mesh_z
+		wmm.mesh = window_mesh(String(pair[2]))
 		wmm.instance_count = xforms.size()
 		for i in xforms.size():
 			wmm.set_instance_transform(i, xforms[i])
@@ -192,7 +290,10 @@ static func make_building(parent: Node3D, prop_name: String, pos: Vector3,
 	# Snow-capped pitched roof, ridge along the long axis.
 	var roof := MeshInstance3D.new()
 	var prism := PrismMesh.new()
-	var roof_h := clampf(minf(size.x, size.z) * 0.35, 1.0, 3.2)
+	# Pitch is a builder's choice, not a constant: steep for a garret,
+	# shallow on a shed. A street of identical roofs is the giveaway.
+	var pitch := 0.26 + float(_hash(h + 71) % 100) / 100.0 * 0.26
+	var roof_h := clampf(minf(size.x, size.z) * pitch, 1.0, 3.6)
 	var overhang := 0.6
 	if size.x >= size.z:
 		prism.size = Vector3(size.z + overhang, roof_h, size.x + overhang)
@@ -200,12 +301,76 @@ static func make_building(parent: Node3D, prop_name: String, pos: Vector3,
 	else:
 		prism.size = Vector3(size.x + overhang, roof_h, size.z + overhang)
 	var rmat := StandardMaterial3D.new()
-	rmat.albedo_color = SNOW_ROOF
+	var age := float(_hash(h + 211) % 100) / 100.0
+	rmat.albedo_color = SNOW_ROOF.lerp(Color(0.34, 0.33, 0.32), age * 0.55)
 	rmat.roughness = 0.9
 	prism.material = rmat
 	roof.mesh = prism
 	roof.position = Vector3(0.0, size.y + roof_h / 2.0, 0.0)
 	root.add_child(roof)
+	# Dormers: a garret window pushed through the pitch. Only some
+	# houses have them, and never the sheds.
+	if size.y > 5.5 and _hash(h + 91) % 100 < 45:
+		var dormers := 1 + _hash(h + 97) % 2
+		var long_x := size.x >= size.z
+		for k in dormers:
+			var frac := (float(k) + 1.0) / (float(dormers) + 1.0) - 0.5
+			var along := (size.x if long_x else size.z) * frac
+			var d_root := Node3D.new()
+			d_root.position = Vector3(along, size.y + roof_h * 0.30, 0.0) if long_x \
+				else Vector3(0.0, size.y + roof_h * 0.30, along)
+			root.add_child(d_root)
+			var cheek := MeshInstance3D.new()
+			var cbox2 := BoxMesh.new()
+			cbox2.size = Vector3(1.5, 1.5, 1.4)
+			var dmat2 := StandardMaterial3D.new()
+			dmat2.albedo_color = Color(0.42, 0.40, 0.36)
+			dmat2.roughness = 0.95
+			cbox2.material = dmat2
+			cheek.mesh = cbox2
+			var off := (size.z if long_x else size.x) / 2.0 - 0.8
+			cheek.position = Vector3(0.0, 0.0, off) if long_x else Vector3(off, 0.0, 0.0)
+			if not long_x:
+				cheek.rotation.y = PI / 2.0
+			d_root.add_child(cheek)
+			var dwin := MeshInstance3D.new()
+			dwin.mesh = window_mesh("lit" if _hash(h + k * 13) % 100 < 35 else "dark")
+			var wm := StandardMaterial3D.new()
+			wm.vertex_color_use_as_albedo = true
+			wm.albedo_color = Color.WHITE
+			dwin.material_override = wm
+			dwin.position = Vector3(0.0, 0.0, off + 0.72) if long_x \
+				else Vector3(off + 0.72, 0.0, 0.0)
+			if not long_x:
+				dwin.rotation.y = PI / 2.0
+			d_root.add_child(dwin)
+
+	# A lean-to against the gable end — the commonest addition in New
+	# England, and it breaks the box outline that says "generated".
+	if _hash(h + 137) % 100 < 40:
+		var lean := MeshInstance3D.new()
+		var lbox := BoxMesh.new()
+		var lw := minf(size.x, size.z) * 0.55
+		lbox.size = Vector3(lw, size.y * 0.5, size.z * 0.7)
+		lbox.material = wall
+		lean.mesh = lbox
+		var side := 1.0 if _hash(h + 139) % 2 == 0 else -1.0
+		lean.position = Vector3(side * (size.x / 2.0 + lw / 2.0 - 0.1),
+			size.y * 0.25, 0.0)
+		root.add_child(lean)
+		var lroof := MeshInstance3D.new()
+		var lprism := PrismMesh.new()
+		lprism.size = Vector3(lw + 0.3, 0.9, size.z * 0.7 + 0.3)
+		lprism.left_to_right = 0.0 if side > 0.0 else 1.0     # a true shed slope
+		var lrmat := StandardMaterial3D.new()
+		lrmat.albedo_color = SNOW_ROOF.darkened(0.10)
+		lrmat.roughness = 0.92
+		lprism.material = lrmat
+		lroof.mesh = lprism
+		lroof.position = Vector3(side * (size.x / 2.0 + lw / 2.0 - 0.1),
+			size.y * 0.5 + 0.45, 0.0)
+		root.add_child(lroof)
+
 	# Chimneys along the ridge — smoke means winter and someone home.
 	var cmat := StandardMaterial3D.new()
 	cmat.albedo_color = CHIMNEY
@@ -260,7 +425,7 @@ static func _instance_glb(parent: Node3D, path: String, pos: Vector3,
 		h = maxf(h, (m as MeshInstance3D).get_aabb().size.y * (m as MeshInstance3D).scale.y)
 	if h > 0.001:
 		node.scale = Vector3.ONE * (target_h / h)
-	node.position = Vector3(pos.x, 0.0, pos.z)
+	node.position = pos
 	node.rotation.y = float(_hash(seed_v) % 628) / 100.0
 	parent.add_child(node)
 	return true
@@ -292,7 +457,7 @@ static func make_bare_tree(parent: Node3D, pos: Vector3, seed_v: int) -> void:
 
 static func _make_procedural_tree(parent: Node3D, pos: Vector3, seed_v: int) -> void:
 	var root := Node3D.new()
-	root.position = Vector3(pos.x, 0.0, pos.z)
+	root.position = pos            # trees stand on the grade, like everything else
 	root.rotation.y = float(_hash(seed_v) % 628) / 100.0
 	parent.add_child(root)
 	var tmat := StandardMaterial3D.new()

@@ -27,6 +27,7 @@ const FigureLib := preload("res://src/presentation/figure_lib.gd")
 const ColonialLib := preload("res://src/presentation/colonial_lib.gd")
 const LookDev := preload("res://src/presentation/look_dev.gd")
 const UIKit := preload("res://src/presentation/ui_kit.gd")
+const TerrainLib := preload("res://src/presentation/terrain_lib.gd")
 const WORLD_DIR := "res://data/world"
 
 # The camera rides close and low, over the shoulder — the open-world
@@ -37,6 +38,7 @@ const RUN_FOV := 68.0
 const CAM_BACK := 5.6
 const CAM_HEIGHT := 2.5
 const CAM_SIDE := 1.15        # over the right shoulder, not down the spine
+const TOWN_RELIEF := 0.28     # graded streets still fall away toward the water
 
 var sim: WorldSim
 var clock := SimClock.new()
@@ -178,15 +180,16 @@ func _build_environment() -> void:
 
 
 func _build_town(data: Dictionary) -> void:
-	var ground := MeshInstance3D.new()
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(220.0, 220.0)
-	plane.material = ColonialLib.ground_material("night_field")
-	ground.mesh = plane
-	add_child(ground)
+	# A town is graded flatter than a pasture, but not a billiard table:
+	# Boston is built on hills and the streets remember it.
+	TerrainLib.build_ground(self, Vector2(240.0, 240.0), "snow", TOWN_RELIEF, 5.0)
 	for b in sim.blocks:
+		# Houses sit INTO the grade, foundations buried a little, so no
+		# building floats above the street on a slope.
 		ColonialLib.make_building(self, String(b["name"]),
-			Vector3(float(b["x"]), 0.0, float(b["z"])),
+			Vector3(float(b["x"]),
+				TerrainLib.height_at(float(b["x"]), float(b["z"]), TOWN_RELIEF) - 0.35,
+				float(b["z"])),
 			Vector3(float(b["w"]), float(b["h"]), float(b["d"])),
 			Color(0.24, 0.23, 0.27))
 	# Streetlamps at the crossings: pools of light are places NOT to walk.
@@ -283,7 +286,7 @@ func _update_crowds() -> void:
 			var mm: MultiMesh = (buckets[pose] as MultiMeshInstance3D).multimesh
 			mm.set_instance_transform(slot, Transform3D(
 				Basis.IDENTITY.rotated(Vector3.UP, facing).scaled(Vector3(1.0, sy, 1.0)),
-				Vector3(x, 0.85 * sy, z)))
+				Vector3(x, TerrainLib.height_at(x, z, TOWN_RELIEF) + 0.85 * sy, z)))
 			var wear := 0.86 + h1 * 0.26
 			mm.set_instance_color(slot, Color(wear, wear, wear))
 		for b in buckets.size():
@@ -369,7 +372,7 @@ func _update_avatar() -> void:
 	var x := lerpf(sim.av_prev_x, sim.av_x, a)
 	var z := lerpf(sim.av_prev_z, sim.av_z, a)
 	var crouch := 0.72 if sim.av_stance == WorldSim.Stance.CROUCH else 1.0
-	_avatar.position = Vector3(x, 0.85 * crouch, z)
+	_avatar.position = Vector3(x, TerrainLib.height_at(x, z, TOWN_RELIEF) + 0.85 * crouch, z)
 	_avatar.rotation.y = sim.av_heading
 	_avatar.scale = Vector3(1.0, crouch, 1.0)
 	# He walks rather than glides: pose-swap on his own gait clock, at
@@ -392,10 +395,10 @@ func _update_watchers() -> void:
 		var node: Node3D = _watcher_nodes[w["id"]]
 		var x := lerpf(float(w["prev_x"]), float(w["x"]), a)
 		var z := lerpf(float(w["prev_z"]), float(w["z"]), a)
-		node.position = Vector3(x, 0.85, z)
+		node.position = Vector3(x, TerrainLib.height_at(x, z, TOWN_RELIEF) + 0.85, z)
 		node.rotation.y = float(w["heading"])
 		var cone: Node3D = _cone_nodes[w["id"]]
-		cone.position = Vector3(x, 0.0, z)
+		cone.position = Vector3(x, TerrainLib.height_at(x, z, TOWN_RELIEF) + 0.05, z)
 		cone.rotation.y = float(w["heading"])
 		# The cone warms as he grows sure of you.
 		var s: float = float(w["suspicion"])

@@ -45,11 +45,14 @@ const FigureLib := preload("res://src/presentation/figure_lib.gd")
 const LookDev := preload("res://src/presentation/look_dev.gd")
 const UIKit := preload("res://src/presentation/ui_kit.gd")
 const ColonialLib := preload("res://src/presentation/colonial_lib.gd")
+const TerrainLib := preload("res://src/presentation/terrain_lib.gd")
 
 # The form-pass wardrobe (docs/04): the King's regulars in red; the
 # American line in blue regimentals only once it has drilled into one —
 # a militia company fights in its own brown coats and round hats.
 const RAIN_COUNT := 900
+## How much the land rolls. The field is drumlin country; a town is graded.
+const RELIEF := 1.0
 const COAT_BRITISH := Color(0.55, 0.12, 0.11)
 const COAT_CONTINENTAL := Color(0.17, 0.21, 0.44)
 const COAT_MILITIA := Color(0.33, 0.26, 0.18)
@@ -341,19 +344,19 @@ func _update_rain() -> void:
 
 
 func _build_field() -> void:
-	var ground := MeshInstance3D.new()
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(120.0, 400.0)
-	plane.material = ColonialLib.ground_material("night_field" if sim.night else "field")
-	ground.mesh = plane
-	add_child(ground)
+	# Ground with relief and cover, not a plane with one texture: men,
+	# walls and trees all ask terrain_lib where the earth is.
+	TerrainLib.build_ground(self, Vector2(160.0, 420.0),
+		"night_field" if sim.night else "field", RELIEF)
+	TerrainLib.scatter(self, Vector2(150.0, 400.0), 90, RELIEF, 3)
 	# Field dressing, presentation-only: bare trees beyond the flanks and
 	# a split-rail fence line either side of the fighting ground.
 	for k in 14:
 		var h := (k * 2654435761) % 1000
 		var tx := (32.0 + float(h % 80) / 10.0) * (1.0 if k % 2 == 0 else -1.0)
+		var tz := -160.0 + float(k) * 23.0 + float(h % 130) / 10.0
 		ColonialLib.make_bare_tree(self,
-			Vector3(tx, 0.0, -160.0 + float(k) * 23.0 + float(h % 130) / 10.0), h + k)
+			Vector3(tx, TerrainLib.height_at(tx, tz, RELIEF), tz), h + k)
 	ColonialLib.make_rail_fence(self, 29.0, -80.0, 80.0)
 	ColonialLib.make_rail_fence(self, -29.0, -80.0, 80.0)
 	# Cover bands are sim truth — draw exactly what the sim scores, so a
@@ -555,7 +558,8 @@ func _update_company_visual(c: BattleCompany) -> void:
 					face_ang = (0.0 if c.facing() > 0.0 else PI) + (h1 - 0.5) * 0.8
 				mm.set_instance_transform(slot, Transform3D(
 					Basis.IDENTITY.rotated(Vector3.UP, face_ang).scaled(body_scale),
-					Vector3(sx, 0.85 * body_y + sbob, sz)))
+					Vector3(sx, TerrainLib.height_at(sx, sz, RELIEF)
+						+ 0.85 * body_y + sbob, sz)))
 				mm.set_instance_color(slot, Color(wear, wear, wear))
 				continue
 			var file := i % FILES
@@ -589,7 +593,7 @@ func _update_company_visual(c: BattleCompany) -> void:
 			mm.set_instance_transform(slot, Transform3D(
 				Basis.IDENTITY.rotated(Vector3.UP,
 					facing + (h2 - 0.5) * 0.5 * disorder).scaled(body_scale),
-				Vector3(x, 0.85 * body_y + bob, zz)))
+				Vector3(x, TerrainLib.height_at(x, zz, RELIEF) + 0.85 * body_y + bob, zz)))
 			mm.set_instance_color(slot, Color(wear, wear, wear))
 	# Park every unused instance of every bucket out of sight.
 	var hidden := Transform3D(Basis.IDENTITY.scaled(Vector3(0.001, 0.001, 0.001)),
@@ -623,8 +627,8 @@ func _spawn_fallen(c: BattleCompany) -> void:
 		var x := lx + (float(idx % FILES) - float(FILES) / 2.0 + 0.5) * FILE_SPACING
 		x += (float(h % 100) / 100.0 - 0.5) * 0.6
 		var zj := (float((h / 100) % 100) / 100.0 - 0.5) * 0.9
-		mi.position = Vector3(x, 0.02,
-			z - float(floori(float(idx) / float(FILES))) * RANK_SPACING * c.facing() + zj)
+		var fz := z - float(floori(float(idx) / float(FILES))) * RANK_SPACING * c.facing() + zj
+		mi.position = Vector3(x, TerrainLib.height_at(x, fz, RELIEF) + 0.02, fz)
 		mi.rotation.y = (float(h % 63) / 63.0 - 0.5) * 1.3
 		_fallen_parent.add_child(mi)
 	_last_effectives[c.id] = now

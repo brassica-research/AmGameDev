@@ -7,3 +7,4 @@ Every Demo Capture run lands a line here, film or no film.
 | 2026-07-26 17:44 | `b8a37bc` | 557s | 112s | NEW FILM |
 | 2026-07-26 18:18 | `a443633` | 743s | 145s | NEW FILM |
 | 2026-07-28 16:41 | `ee9a968` | 733s | 164s | NEW FILM |
+| 2026-07-28 17:20 | `bfdc6b8` | 1006s | 165s | NEW FILM |

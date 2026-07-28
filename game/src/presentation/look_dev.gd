@@ -23,6 +23,7 @@ const HOURS := {
 		"sun_color": Color(1.0, 0.88, 0.76),
 		"ambient": Color(0.50, 0.57, 0.74), "ambient_energy": 0.42,
 		"fog": Color(0.60, 0.58, 0.58), "fog_density": 0.0014,
+		"fill_color": Color(0.52, 0.62, 0.92),   # dawn shadows are blue
 		"exposure": 0.90,
 	},
 	"overcast": {                              # the default New England day
@@ -41,6 +42,7 @@ const HOURS := {
 		"sun_color": Color(1.0, 0.96, 0.86),
 		"ambient": Color(0.72, 0.78, 0.88), "ambient_energy": 0.60,
 		"fog": Color(0.62, 0.67, 0.72), "fog_density": 0.0015,
+		"fill_color": Color(0.62, 0.74, 0.98),
 		"exposure": 1.0,
 	},
 	"night": {                                 # a quarter moon over a field
@@ -59,6 +61,7 @@ const HOURS := {
 		"sun_color": Color(0.68, 0.78, 1.0),
 		"ambient": Color(0.36, 0.44, 0.64), "ambient_energy": 0.55,
 		"fog": Color(0.07, 0.10, 0.17), "fog_density": 0.0075,
+		"fill_color": Color(0.42, 0.54, 0.86),
 		"exposure": 1.2,
 	},
 }
@@ -136,9 +139,13 @@ static func key_light(hour: String, weather := "clear", shadows := true) -> Dire
 	if shadows:
 		light.shadow_enabled = true
 		light.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-		light.directional_shadow_max_distance = 120.0
-		light.shadow_bias = 0.04
-		light.shadow_normal_bias = 1.4
+		light.directional_shadow_max_distance = 145.0
+		light.directional_shadow_blend_splits = true
+		light.directional_shadow_split_1 = 0.06     # detail close to the camera
+		light.directional_shadow_split_2 = 0.18
+		light.shadow_bias = 0.035
+		light.shadow_normal_bias = 1.2
+		light.shadow_blur = 1.35                    # the sun is not a laser
 	return light
 
 
@@ -148,11 +155,42 @@ static func fill_light(hour: String) -> DirectionalLight3D:
 	var h: Dictionary = HOURS.get(hour, HOURS["overcast"])
 	var angle: Vector3 = h["sun_angle"]
 	var fill := DirectionalLight3D.new()
-	fill.rotation_degrees = Vector3(-30.0, angle.y + 165.0, 0.0)
-	fill.light_energy = 0.22
-	fill.light_color = Color(0.62, 0.72, 0.95)
+	fill.rotation_degrees = Vector3(-26.0, angle.y + 158.0, 0.0)
+	fill.light_energy = 0.26
+	fill.light_color = h.get("fill_color", Color(0.60, 0.70, 0.95))
 	fill.shadow_enabled = false
 	return fill
+
+
+## Light thrown back UP off the ground. Half of what makes an outdoor
+## photograph look outdoors is the earth bouncing the sun into the
+## undersides of things — coat skirts, hat brims, the belly of a horse.
+## Without it, everything below the waist goes to flat shadow, which is
+## most of why a scene reads as "engine output" (docs/06).
+static func bounce_light(hour: String) -> DirectionalLight3D:
+	var h: Dictionary = HOURS.get(hour, HOURS["overcast"])
+	var ground: Color = h["ground"]
+	var bounce := DirectionalLight3D.new()
+	# Pointing UP: elevation positive.
+	bounce.rotation_degrees = Vector3(62.0, float((h["sun_angle"] as Vector3).y) + 20.0, 0.0)
+	bounce.light_energy = float(h["sun_energy"]) * 0.18
+	# The bounce carries the colour of what it bounced off.
+	bounce.light_color = ground.lerp(h["sun_color"], 0.55)
+	bounce.shadow_enabled = false
+	return bounce
+
+
+## A back light that separates a dark figure from a dark background.
+## The one deliberate cheat in the rig, and the oldest one in the trade.
+static func rim_light(hour: String) -> DirectionalLight3D:
+	var h: Dictionary = HOURS.get(hour, HOURS["overcast"])
+	var angle: Vector3 = h["sun_angle"]
+	var rim := DirectionalLight3D.new()
+	rim.rotation_degrees = Vector3(-14.0, angle.y + 196.0, 0.0)
+	rim.light_energy = 0.30
+	rim.light_color = (h["sun_color"] as Color).lerp(Color(0.72, 0.82, 1.0), 0.5)
+	rim.shadow_enabled = false
+	return rim
 
 
 ## Which hour a battle scenario is fought at.

@@ -173,6 +173,8 @@ func _build_environment() -> void:
 	var moon := LookDev.key_light("town_night", "clear", not _lowfx)
 	add_child(moon)
 	add_child(LookDev.fill_light("town_night"))
+	add_child(LookDev.bounce_light("town_night"))
+	add_child(LookDev.rim_light("town_night"))
 	ColonialLib.make_moon(self, moon)
 	_cam = Camera3D.new()
 	_cam.fov = BASE_FOV

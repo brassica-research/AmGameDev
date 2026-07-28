@@ -97,6 +97,7 @@ var _last_shot_time: Dictionary = {}  # company id -> {platoon: anim_time of las
 var _mat_by_id: Dictionary = {}       # company id -> StandardMaterial3D
 var _coat_by_id: Dictionary = {}      # company id -> coat color (for the fallen)
 var _fallen_mesh_by_id: Dictionary = {}  # built once; casualties share it
+var _command_by_id: Dictionary = {}   # company id -> officer, sergeant, drummer, colours
 var _last_effectives: Dictionary = {}
 var _prev_shots: Dictionary = {}      # company id -> [shots p0, shots p1]
 var _fallen_parent: Node3D
@@ -179,6 +180,7 @@ func _process(delta: float) -> void:
 	_anim_time += delta
 	for c in sim.companies:
 		_update_company_visual(c)
+		_update_command_party(c)
 		_spawn_fallen(c)
 		_spawn_fire_effects(c)
 	_update_fx(delta)
@@ -298,6 +300,8 @@ func _build_environment() -> void:
 	var sun := LookDev.key_light(hour, sim.weather, not _lowfx)
 	add_child(sun)
 	add_child(LookDev.fill_light(hour))
+	add_child(LookDev.bounce_light(hour))
+	add_child(LookDev.rim_light(hour))
 	if sim.night:
 		ColonialLib.make_moon(self, sun)
 	_camera = Camera3D.new()
@@ -384,7 +388,7 @@ func _lane_x(lane: int) -> float:
 ## marching legs, muskets coming off the shoulder, ramrods working.
 ## Colors (coat and skin alike) are baked as vertex colors, so each
 ## bucket is one draw call and the material stays white for fades.
-const SKIN_BUCKETS := 3
+const SKIN_BUCKETS := 5   # five dressings across a company, not three
 
 func _build_company_visual(c: BattleCompany, color: Color) -> void:
 	var militia := c.side == 0 and c.drill() == 0
@@ -406,10 +410,60 @@ func _build_company_visual(c: BattleCompany, color: Color) -> void:
 			add_child(mmi)
 			buckets.append(mmi)
 	_mm_by_id[c.id] = buckets
+	_build_command_party(c, coat, militia)
 	_mat_by_id[c.id] = mat
 	_coat_by_id[c.id] = COAT_MILITIA if militia else color
 	_fallen_mesh_by_id[c.id] = FigureLib.build_fallen(_coat_by_id[c.id],
 		FigureLib.skin_for(3, absi(c.id.hash())))
+
+
+## The men you can pick out at two hundred yards: the officer on the
+## right of the line, his sergeant behind it, the drummer beside him,
+## and the colours in the centre. Four nodes, not four hundred — and
+## they are what stops a company reading as one figure repeated.
+func _build_command_party(c: BattleCompany, coat: Color, militia: bool) -> void:
+	var party: Array[Dictionary] = []
+	var facing_col := Color(0.86, 0.82, 0.62) if c.side == 1 else Color(0.72, 0.66, 0.44)
+	party.append({"mesh": FigureLib.build_officer(coat), "off": Vector2(8.6, -1.2)})
+	party.append({"mesh": FigureLib.build_sergeant(coat), "off": Vector2(-8.0, -2.6)})
+	if not militia:
+		# Militia companies had neither drums nor colours in the field
+		# in April 1775; regulars and Continentals did.
+		party.append({"mesh": FigureLib.build_drummer(coat, facing_col),
+			"off": Vector2(6.4, -2.8)})
+		var flag := Color(0.62, 0.14, 0.13) if c.side == 1 else Color(0.20, 0.26, 0.52)
+		party.append({"mesh": FigureLib.build_colours(coat, flag),
+			"off": Vector2(0.6, -2.2)})
+	var nodes: Array[MeshInstance3D] = []
+	for spec in party:
+		var mi := MeshInstance3D.new()
+		mi.mesh = spec["mesh"]
+		mi.material_override = FigureLib.figure_material()
+		add_child(mi)
+		mi.set_meta("off", spec["off"])
+		nodes.append(mi)
+	_command_by_id[c.id] = nodes
+
+
+## They march with the company, on the same ground, facing the same way.
+func _update_command_party(c: BattleCompany) -> void:
+	if not _command_by_id.has(c.id):
+		return
+	var z := _render_z(c)
+	var lx := _lane_x(c.lane)
+	var alive := c.is_active() and c.effectives() > 0
+	var facing := 0.0 if c.facing() > 0.0 else PI
+	for mi in (_command_by_id[c.id] as Array):
+		var node := mi as MeshInstance3D
+		node.visible = alive
+		if not alive:
+			continue
+		var off: Vector2 = node.get_meta("off")
+		var x := lx + off.x
+		var zz := z + off.y * c.facing()
+		var sway := sin(_anim_time * 1.4 + off.x) * 0.05
+		node.position = Vector3(x, TerrainLib.height_at(x, zz, RELIEF) + 0.85, zz)
+		node.rotation.y = facing + sway
 
 
 func _build_smoke() -> void:

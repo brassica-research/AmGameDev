@@ -747,6 +747,42 @@ func _test_art_form_pass() -> void:
 		check(col_lib.window_mesh("shuttered").surface_get_arrays(0)[Mesh.ARRAY_VERTEX].size()
 			> wv.size(), "a shuttered window carries its boards")
 
+	# The command party: a company is not forty identical privates.
+	if fig_lib != null:
+		var officer: ArrayMesh = fig_lib.build_officer(Color(0.5, 0.1, 0.1))
+		var sergeant: ArrayMesh = fig_lib.build_sergeant(Color(0.5, 0.1, 0.1))
+		var drummer: ArrayMesh = fig_lib.build_drummer(Color(0.5, 0.1, 0.1),
+			Color(0.85, 0.8, 0.6))
+		var colours: ArrayMesh = fig_lib.build_colours(Color(0.5, 0.1, 0.1),
+			Color(0.2, 0.26, 0.52))
+		var private_top := 0.0
+		for v in (fig_lib.build_soldier(Color(0.5, 0.1, 0.1))
+				.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array):
+			private_top = maxf(private_top, v.y)
+		for named in [["officer", officer], ["sergeant", sergeant],
+				["drummer", drummer], ["colours", colours]]:
+			var m: ArrayMesh = named[1]
+			check_quiet(m != null and m.get_surface_count() == 1,
+				"%s builds" % named[0])
+		# Each must be distinguishable by SILHOUETTE, which is the whole
+		# point — you should know them at two hundred yards.
+		var serg_top := 0.0
+		for v in (sergeant.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array):
+			serg_top = maxf(serg_top, v.y)
+		var col_top := 0.0
+		for v in (colours.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array):
+			col_top = maxf(col_top, v.y)
+		check(serg_top > private_top, "the sergeant's spontoon tops the muskets")
+		check(col_top > serg_top, "the colours top everything on the field")
+		var off_verts: PackedVector3Array = officer.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+		var off_top := 0.0
+		for v in off_verts:
+			off_top = maxf(off_top, v.y)
+		check(off_top < private_top,
+			"the officer carries no musket, so nothing rises above his hat")
+		check(drummer.surface_get_arrays(0)[Mesh.ARRAY_VERTEX].size() > off_verts.size(),
+			"the drummer carries his drum")
+
 	# The house look: one graded environment for every scene (docs/06).
 	var look: Variant = load("res://src/presentation/look_dev.gd")
 	check(look != null, "look_dev parses")
@@ -772,6 +808,13 @@ func _test_art_form_pass() -> void:
 		check(not flat.shadow_enabled, "--lowfx rigs skip the shadow pass")
 		check(look.fill_light("dawn").light_energy < key.light_energy,
 			"the fill is a fill, not a second sun")
+		# The bounce carries the ground's colour up into the undersides.
+		var bounce: DirectionalLight3D = look.bounce_light("afternoon")
+		check(bounce.rotation_degrees.x > 0.0, "the bounce light points UP off the earth")
+		check(bounce.light_energy < key.light_energy * 0.4, "and it stays a bounce")
+		check(not bounce.shadow_enabled and not look.rim_light("dawn").shadow_enabled,
+			"neither bounce nor rim casts — one sun, one set of shadows")
+		check(key.shadow_blur > 1.0, "shadow edges are soft: the sun is not a laser")
 		check(look.hour_for_scenario("lexington", false) == "dawn"
 			and look.hour_for_scenario("battle_road", false) == "afternoon"
 			and look.hour_for_scenario("field", true) == "night",

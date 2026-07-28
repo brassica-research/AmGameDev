@@ -397,3 +397,102 @@ static func figure_material() -> StandardMaterial3D:
 ## War (docs/08 §4); the ranks should look it.
 static func skin_for(i: int, salt: int = 0) -> Color:
 	return SKIN_TONES[absi((i * 2654435761 + salt * 97) / 7) % SKIN_TONES.size()]
+
+# --- the men who are not privates ---------------------------------------
+#
+# A company read as forty identical figures because that is what it was.
+# Every real company had a handful of men you could pick out at two
+# hundred yards by silhouette alone: the officer with a sword and no
+# musket, the sergeant carrying a spontoon, the drummer, and the ensign
+# with the colours. They are built as single meshes (four per company,
+# not forty), so they cost nothing and they break the rank.
+
+## An officer: no musket, a sword at his side, a spontoon-free hand for
+## gesturing, and a laced hat. He stands a little straighter.
+static func build_officer(coat: Color, skin: Color = SKIN_TONES[1]) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_body(st, coat.lightened(0.06), BUFF, skin, "tricorn", Pose.STAND, 0, false)
+	# A sword hung on the left hip, hilt forward.
+	var b := Basis(Vector3.RIGHT, 0.30)
+	_box(st, Color(0.72, 0.62, 0.28), Vector3(-0.24, -0.34, -0.02),
+		Vector3(0.05, 0.62, 0.05), b)
+	_box(st, Color(0.72, 0.62, 0.28), Vector3(-0.24, 0.02, -0.02),
+		Vector3(0.09, 0.13, 0.09))
+	# A gorget at the throat — the mark of a commissioned man on duty.
+	_box(st, Color(0.78, 0.66, 0.30), Vector3(0.0, 0.40, 0.115),
+		Vector3(0.13, 0.06, 0.03))
+	# Hat lace.
+	_tube(st, Color(0.80, 0.70, 0.34), Vector3(0.0, 0.585, 0.0),
+		Vector3(0.365, 0.018, 0.365))
+	return st.commit()
+
+
+## A sergeant: musket exchanged for a spontoon, which is a nine-foot
+## silhouette nobody else has.
+static func build_sergeant(coat: Color, skin: Color = SKIN_TONES[3]) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_body(st, coat, BUFF, skin, "tricorn", Pose.STAND, 0, true)
+	var b := Basis(Vector3.BACK, 0.07)
+	_tube(st, WOOD, Vector3(0.30, 0.30, 0.06), Vector3(0.045, 2.6, 0.045), b)
+	_box(st, STEEL, Vector3(0.30, 1.68, 0.06), Vector3(0.10, 0.34, 0.03), b)
+	_box(st, STEEL, Vector3(0.30, 1.50, 0.06), Vector3(0.26, 0.05, 0.03), b)
+	return st.commit()
+
+
+## A drummer: the drum at his hip is unmistakable, and drummers wore
+## reversed facings — the coat colours swapped — so he reads as odd at
+## any distance, which is exactly what he was for.
+static func build_drummer(coat: Color, facing_col: Color,
+		skin: Color = SKIN_TONES[2]) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_body(st, facing_col, BUFF, skin, "round", Pose.STAND, 1, false)
+	# The drum, slung at the left hip.
+	_tube(st, Color(0.76, 0.66, 0.44), Vector3(-0.30, -0.36, 0.10),
+		Vector3(0.52, 0.44, 0.52), Basis(Vector3.BACK, 0.35))
+	_tube(st, coat, Vector3(-0.30, -0.14, 0.10),
+		Vector3(0.54, 0.05, 0.54), Basis(Vector3.BACK, 0.35))
+	_tube(st, coat, Vector3(-0.30, -0.58, 0.10),
+		Vector3(0.54, 0.05, 0.54), Basis(Vector3.BACK, 0.35))
+	# Sticks.
+	_box(st, Color(0.84, 0.78, 0.62), Vector3(-0.10, -0.16, 0.30),
+		Vector3(0.03, 0.03, 0.42), Basis(Vector3.UP, 0.3))
+	return st.commit()
+
+
+## The ensign with the colours: a pole twice his height and a cloth that
+## catches the wind. One of these in a company changes the whole read of
+## a line at distance.
+static func build_colours(coat: Color, flag: Color,
+		skin: Color = SKIN_TONES[0]) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_body(st, coat, BUFF, skin, "tricorn", Pose.STAND, 2, false)
+	_tube(st, WOOD, Vector3(0.28, 0.75, 0.04), Vector3(0.05, 3.5, 0.05))
+	# The cloth, hanging in folds rather than as one flat sheet.
+	for k in 4:
+		var fold := 0.06 * sin(float(k) * 1.7)
+		_box(st, flag.darkened(0.06 * float(k % 2)),
+			Vector3(0.28 + 0.36 + float(k) * 0.26, 1.95, 0.04 + fold),
+			Vector3(0.26, 0.78, 0.03))
+	_box(st, Color(0.80, 0.70, 0.34), Vector3(0.28, 2.55, 0.04),
+		Vector3(0.08, 0.16, 0.08))   # the finial
+	return st.commit()
+
+
+## The shared body used by the command figures — the same construction
+## the ranks use, exposed so an officer is a soldier who is dressed
+## differently rather than a different species.
+static func _body(st: SurfaceTool, coat: Color, breeches: Color, skin: Color,
+		hat: String, pose: int, variant: int, musket: bool) -> void:
+	var built := _figure(coat, breeches, skin, hat, musket, true, pose, variant)
+	var arrays := built.surface_get_arrays(0)
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var cols: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+	var norms: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	for i in verts.size():
+		st.set_color(cols[i])
+		st.set_normal(norms[i])
+		st.add_vertex(verts[i])
